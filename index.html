@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Partcraft - STEP Drawing Generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 8px;
+            font-weight: 600;
+            font-size: 24px;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 24px;
+            font-size: 14px;
+        }
+        
+        .version {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            font-size: 11px;
+            color: #555;
+            font-family: monospace;
+        }
+        
+        #status {
+            padding: 15px;
+            background: #2a2a4a;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-family: monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            min-height: 60px;
+        }
+        
+        .upload-area {
+            border: 2px dashed #4a4a6a;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .upload-area:hover, .upload-area.dragover {
+            border-color: #6c63ff;
+            background: rgba(108, 99, 255, 0.1);
+        }
+        
+        .upload-area.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .upload-area input {
+            display: none;
+        }
+        
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+        
+        .results {
+            background: #2a2a4a;
+            border-radius: 8px;
+            padding: 20px;
+            display: none;
+        }
+        
+        .results.show {
+            display: block;
+        }
+        
+        .results h3 {
+            margin-bottom: 15px;
+            color: #6c63ff;
+        }
+        
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .result-card {
+            background: #1a1a2e;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        
+        .result-card label {
+            font-size: 11px;
+            text-transform: uppercase;
+            color: #888;
+            letter-spacing: 1px;
+        }
+        
+        .result-card .value {
+            font-size: 24px;
+            font-weight: 600;
+            margin-top: 5px;
+        }
+        
+        .result-card .unit {
+            font-size: 14px;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Partcraft</h1>
+        <p class="subtitle">STEP Drawing Generator</p>
+        
+        <div id="status">Initializing...</div>
+        
+        <div class="upload-area disabled" id="upload-area">
+            <div class="upload-icon">📁</div>
+            <p>Drop a STEP file here or click to upload</p>
+            <p style="font-size: 12px; color: #888; margin-top: 8px;">.stp or .step files</p>
+            <input type="file" id="file-input" accept=".stp,.step">
+        </div>
+        
+        <div class="results" id="results">
+            <h3>Part Analysis</h3>
+            <div class="result-grid">
+                <div class="result-card">
+                    <label>Part Name</label>
+                    <div class="value" id="part-name">-</div>
+                </div>
+                <div class="result-card">
+                    <label>Width (X)</label>
+                    <div class="value"><span id="dim-x">-</span> <span class="unit">in</span></div>
+                </div>
+                <div class="result-card">
+                    <label>Height (Y)</label>
+                    <div class="value"><span id="dim-y">-</span> <span class="unit">in</span></div>
+                </div>
+                <div class="result-card">
+                    <label>Depth (Z)</label>
+                    <div class="value"><span id="dim-z">-</span> <span class="unit">in</span></div>
+                </div>
+                <div class="result-card">
+                    <label>Meshes</label>
+                    <div class="value" id="mesh-count">-</div>
+                </div>
+                <div class="result-card">
+                    <label>Edges</label>
+                    <div class="value" id="edge-count">-</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="version">v0.0.1</div>
+
+    <script type="module">
+        import occtimportjs from 'https://cdn.jsdelivr.net/npm/occt-import-js@0.0.12/dist/occt-import-js.js';
+
+        const statusEl = document.getElementById('status');
+        const uploadArea = document.getElementById('upload-area');
+        const fileInput = document.getElementById('file-input');
+        const resultsEl = document.getElementById('results');
+
+        let occt = null;
+
+        function log(msg) {
+            statusEl.textContent = msg;
+        }
+
+        // Initialize
+        try {
+            log('Loading STEP parser...');
+            occt = await occtimportjs();
+            log('Ready! Upload a STEP file to analyze.');
+            uploadArea.classList.remove('disabled');
+        } catch (err) {
+            log('Failed to load: ' + err.message);
+        }
+
+        // Upload handlers
+        uploadArea.addEventListener('click', () => {
+            if (!uploadArea.classList.contains('disabled')) {
+                fileInput.click();
+            }
+        });
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            if (!uploadArea.classList.contains('disabled')) {
+                uploadArea.classList.add('dragover');
+            }
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            if (!uploadArea.classList.contains('disabled') && e.dataTransfer.files.length) {
+                processFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) {
+                processFile(e.target.files[0]);
+            }
+        });
+
+        async function processFile(file) {
+            log('Reading: ' + file.name);
+
+            try {
+                const buffer = await file.arrayBuffer();
+                const fileBuffer = new Uint8Array(buffer);
+
+                // Get part name from filename
+                let partName = file.name.replace(/\.(stp|step)$/i, '');
+
+                log('Parsing STEP file...');
+                const result = occt.ReadStepFile(fileBuffer, null);
+
+                // Calculate bounding box
+                let minX = Infinity, minY = Infinity, minZ = Infinity;
+                let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+                let totalEdges = 0;
+
+                for (const mesh of result.meshes) {
+                    const positions = mesh.attributes.position.array;
+                    for (let i = 0; i < positions.length; i += 3) {
+                        minX = Math.min(minX, positions[i]);
+                        maxX = Math.max(maxX, positions[i]);
+                        minY = Math.min(minY, positions[i + 1]);
+                        maxY = Math.max(maxY, positions[i + 1]);
+                        minZ = Math.min(minZ, positions[i + 2]);
+                        maxZ = Math.max(maxZ, positions[i + 2]);
+                    }
+                    if (mesh.brep_edges) {
+                        totalEdges += mesh.brep_edges.length;
+                    }
+                }
+
+                // Update UI
+                document.getElementById('part-name').textContent = partName;
+                document.getElementById('dim-x').textContent = (maxX - minX).toFixed(3);
+                document.getElementById('dim-y').textContent = (maxY - minY).toFixed(3);
+                document.getElementById('dim-z').textContent = (maxZ - minZ).toFixed(3);
+                document.getElementById('mesh-count').textContent = result.meshes.length;
+                document.getElementById('edge-count').textContent = totalEdges;
+
+                resultsEl.classList.add('show');
+                log('✓ Analysis complete!');
+
+            } catch (err) {
+                log('Error: ' + err.message);
+                console.error(err);
+            }
+        }
+    </script>
+</body>
+</html>
