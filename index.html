@@ -205,9 +205,10 @@
         </div>
     </div>
     
-    <div class="version">v0.0.6</div>
+    <div class="version">v0.0.7</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/occt-import-js@0.0.12/dist/occt-import-js.js"></script>
+    <!-- Using latest version that supports params -->
+    <script src="https://cdn.jsdelivr.net/npm/occt-import-js@0.0.23/dist/occt-import-js.js"></script>
     <script>
         (async function() {
             const statusEl = document.getElementById('status');
@@ -224,10 +225,10 @@
 
             // Initialize
             try {
-                log('Loading STEP parser...');
+                log('Loading STEP parser (v0.0.23)...');
                 occt = await occtimportjs({
                     locateFile: (name) => {
-                        return 'https://cdn.jsdelivr.net/npm/occt-import-js@0.0.12/dist/' + name;
+                        return 'https://cdn.jsdelivr.net/npm/occt-import-js@0.0.23/dist/' + name;
                     }
                 });
                 log('Ready! Upload a STEP file to analyze.');
@@ -301,6 +302,7 @@
 
                     log('Parsing STEP file with inch units...');
                     
+                    // v0.0.23 supports params
                     const params = {
                         linearUnit: 'inch'
                     };
