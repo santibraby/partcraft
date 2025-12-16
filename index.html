@@ -179,113 +179,119 @@
         </div>
     </div>
     
-    <div class="version">v0.0.1</div>
+    <div class="version">v0.0.2</div>
 
-    <script type="module">
-        import occtimportjs from 'https://cdn.jsdelivr.net/npm/occt-import-js@0.0.12/dist/occt-import-js.js';
+    <script src="https://cdn.jsdelivr.net/npm/occt-import-js@0.0.12/dist/occt-import-js.js"></script>
+    <script>
+        (async function() {
+            const statusEl = document.getElementById('status');
+            const uploadArea = document.getElementById('upload-area');
+            const fileInput = document.getElementById('file-input');
+            const resultsEl = document.getElementById('results');
 
-        const statusEl = document.getElementById('status');
-        const uploadArea = document.getElementById('upload-area');
-        const fileInput = document.getElementById('file-input');
-        const resultsEl = document.getElementById('results');
+            let occt = null;
 
-        let occt = null;
-
-        function log(msg) {
-            statusEl.textContent = msg;
-        }
-
-        // Initialize
-        try {
-            log('Loading STEP parser...');
-            occt = await occtimportjs();
-            log('Ready! Upload a STEP file to analyze.');
-            uploadArea.classList.remove('disabled');
-        } catch (err) {
-            log('Failed to load: ' + err.message);
-        }
-
-        // Upload handlers
-        uploadArea.addEventListener('click', () => {
-            if (!uploadArea.classList.contains('disabled')) {
-                fileInput.click();
+            function log(msg) {
+                statusEl.textContent = msg;
             }
-        });
 
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            if (!uploadArea.classList.contains('disabled')) {
-                uploadArea.classList.add('dragover');
-            }
-        });
-
-        uploadArea.addEventListener('dragleave', () => {
-            uploadArea.classList.remove('dragover');
-        });
-
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.classList.remove('dragover');
-            if (!uploadArea.classList.contains('disabled') && e.dataTransfer.files.length) {
-                processFile(e.dataTransfer.files[0]);
-            }
-        });
-
-        fileInput.addEventListener('change', (e) => {
-            if (e.target.files.length) {
-                processFile(e.target.files[0]);
-            }
-        });
-
-        async function processFile(file) {
-            log('Reading: ' + file.name);
-
+            // Initialize
             try {
-                const buffer = await file.arrayBuffer();
-                const fileBuffer = new Uint8Array(buffer);
-
-                // Get part name from filename
-                let partName = file.name.replace(/\.(stp|step)$/i, '');
-
-                log('Parsing STEP file...');
-                const result = occt.ReadStepFile(fileBuffer, null);
-
-                // Calculate bounding box
-                let minX = Infinity, minY = Infinity, minZ = Infinity;
-                let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
-                let totalEdges = 0;
-
-                for (const mesh of result.meshes) {
-                    const positions = mesh.attributes.position.array;
-                    for (let i = 0; i < positions.length; i += 3) {
-                        minX = Math.min(minX, positions[i]);
-                        maxX = Math.max(maxX, positions[i]);
-                        minY = Math.min(minY, positions[i + 1]);
-                        maxY = Math.max(maxY, positions[i + 1]);
-                        minZ = Math.min(minZ, positions[i + 2]);
-                        maxZ = Math.max(maxZ, positions[i + 2]);
+                log('Loading STEP parser...');
+                occt = await occtimportjs({
+                    locateFile: (name) => {
+                        return 'https://cdn.jsdelivr.net/npm/occt-import-js@0.0.12/dist/' + name;
                     }
-                    if (mesh.brep_edges) {
-                        totalEdges += mesh.brep_edges.length;
-                    }
-                }
-
-                // Update UI
-                document.getElementById('part-name').textContent = partName;
-                document.getElementById('dim-x').textContent = (maxX - minX).toFixed(3);
-                document.getElementById('dim-y').textContent = (maxY - minY).toFixed(3);
-                document.getElementById('dim-z').textContent = (maxZ - minZ).toFixed(3);
-                document.getElementById('mesh-count').textContent = result.meshes.length;
-                document.getElementById('edge-count').textContent = totalEdges;
-
-                resultsEl.classList.add('show');
-                log('✓ Analysis complete!');
-
+                });
+                log('Ready! Upload a STEP file to analyze.');
+                uploadArea.classList.remove('disabled');
             } catch (err) {
-                log('Error: ' + err.message);
+                log('Failed to load: ' + err.message);
                 console.error(err);
             }
-        }
+
+            // Upload handlers
+            uploadArea.addEventListener('click', () => {
+                if (!uploadArea.classList.contains('disabled')) {
+                    fileInput.click();
+                }
+            });
+
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                if (!uploadArea.classList.contains('disabled')) {
+                    uploadArea.classList.add('dragover');
+                }
+            });
+
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.classList.remove('dragover');
+            });
+
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                if (!uploadArea.classList.contains('disabled') && e.dataTransfer.files.length) {
+                    processFile(e.dataTransfer.files[0]);
+                }
+            });
+
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length) {
+                    processFile(e.target.files[0]);
+                }
+            });
+
+            async function processFile(file) {
+                log('Reading: ' + file.name);
+
+                try {
+                    const buffer = await file.arrayBuffer();
+                    const fileBuffer = new Uint8Array(buffer);
+
+                    // Get part name from filename
+                    let partName = file.name.replace(/\.(stp|step)$/i, '');
+
+                    log('Parsing STEP file...');
+                    const result = occt.ReadStepFile(fileBuffer, null);
+
+                    // Calculate bounding box
+                    let minX = Infinity, minY = Infinity, minZ = Infinity;
+                    let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+                    let totalEdges = 0;
+
+                    for (const mesh of result.meshes) {
+                        const positions = mesh.attributes.position.array;
+                        for (let i = 0; i < positions.length; i += 3) {
+                            minX = Math.min(minX, positions[i]);
+                            maxX = Math.max(maxX, positions[i]);
+                            minY = Math.min(minY, positions[i + 1]);
+                            maxY = Math.max(maxY, positions[i + 1]);
+                            minZ = Math.min(minZ, positions[i + 2]);
+                            maxZ = Math.max(maxZ, positions[i + 2]);
+                        }
+                        if (mesh.brep_edges) {
+                            totalEdges += mesh.brep_edges.length;
+                        }
+                    }
+
+                    // Update UI
+                    document.getElementById('part-name').textContent = partName;
+                    document.getElementById('dim-x').textContent = (maxX - minX).toFixed(3);
+                    document.getElementById('dim-y').textContent = (maxY - minY).toFixed(3);
+                    document.getElementById('dim-z').textContent = (maxZ - minZ).toFixed(3);
+                    document.getElementById('mesh-count').textContent = result.meshes.length;
+                    document.getElementById('edge-count').textContent = totalEdges;
+
+                    resultsEl.classList.add('show');
+                    log('✓ Analysis complete!');
+
+                } catch (err) {
+                    log('Error: ' + err.message);
+                    console.error(err);
+                }
+            }
+        })();
     </script>
 </body>
 </html>
