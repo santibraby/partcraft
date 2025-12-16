@@ -5,12 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Partcraft - STEP Drawing Generator</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
             background: #1a1a2e;
@@ -18,289 +13,74 @@
             min-height: 100vh;
             padding: 20px;
         }
-        
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        
-        h1 {
-            text-align: center;
-            margin-bottom: 8px;
-            font-weight: 600;
-            font-size: 24px;
-        }
-        
-        .subtitle {
-            text-align: center;
-            color: #888;
-            margin-bottom: 24px;
-            font-size: 14px;
-        }
-        
-        .version {
-            position: fixed;
-            bottom: 10px;
-            right: 10px;
-            font-size: 11px;
-            color: #555;
-            font-family: monospace;
-        }
-        
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { text-align: center; margin-bottom: 8px; font-weight: 600; font-size: 24px; }
+        .subtitle { text-align: center; color: #888; margin-bottom: 24px; font-size: 14px; }
+        .version { position: fixed; bottom: 10px; right: 10px; font-size: 11px; color: #555; font-family: monospace; }
         #status {
-            padding: 15px;
-            background: #2a2a4a;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            font-family: monospace;
-            font-size: 13px;
-            white-space: pre-wrap;
-            min-height: 40px;
+            padding: 15px; background: #2a2a4a; border-radius: 8px; margin-bottom: 20px;
+            font-family: monospace; font-size: 13px; white-space: pre-wrap; min-height: 40px;
         }
-        
         .upload-area {
-            border: 2px dashed #4a4a6a;
-            border-radius: 12px;
-            padding: 40px;
-            text-align: center;
-            margin-bottom: 20px;
-            cursor: pointer;
-            transition: all 0.3s;
+            border: 2px dashed #4a4a6a; border-radius: 12px; padding: 40px;
+            text-align: center; margin-bottom: 20px; cursor: pointer; transition: all 0.3s;
         }
-        
-        .upload-area:hover, .upload-area.dragover {
-            border-color: #6c63ff;
-            background: rgba(108, 99, 255, 0.1);
-        }
-        
-        .upload-area.disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        
-        .upload-area.hidden {
-            display: none;
-        }
-        
-        .upload-area input {
-            display: none;
-        }
-        
-        .upload-icon {
-            font-size: 48px;
-            margin-bottom: 10px;
-        }
-        
-        .results {
-            display: none;
-        }
-        
-        .results.show {
-            display: block;
-        }
-        
+        .upload-area:hover, .upload-area.dragover { border-color: #6c63ff; background: rgba(108, 99, 255, 0.1); }
+        .upload-area.disabled { opacity: 0.5; cursor: not-allowed; }
+        .upload-area.hidden { display: none; }
+        .upload-area input { display: none; }
+        .upload-icon { font-size: 48px; margin-bottom: 10px; }
+        .results { display: none; }
+        .results.show { display: block; }
         .info-bar {
-            display: flex;
-            gap: 20px;
-            flex-wrap: wrap;
-            margin-bottom: 20px;
-            padding: 15px;
-            background: #2a2a4a;
-            border-radius: 8px;
-            align-items: center;
+            display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 20px;
+            padding: 15px; background: #2a2a4a; border-radius: 8px; align-items: center;
         }
-        
-        .info-item {
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .info-item label {
-            font-size: 10px;
-            text-transform: uppercase;
-            color: #888;
-            letter-spacing: 1px;
-        }
-        
-        .info-item .value {
-            font-size: 18px;
-            font-weight: 600;
-        }
-        
+        .info-item { display: flex; flex-direction: column; }
+        .info-item label { font-size: 10px; text-transform: uppercase; color: #888; letter-spacing: 1px; }
+        .info-item .value { font-size: 18px; font-weight: 600; }
         .controls {
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-            margin-bottom: 20px;
-            padding: 15px;
-            background: #2a2a4a;
-            border-radius: 8px;
-            align-items: flex-end;
+            display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 20px;
+            padding: 15px; background: #2a2a4a; border-radius: 8px; align-items: flex-end;
         }
-        
-        .toggle-group {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
-        
-        .toggle-group label {
-            font-size: 10px;
-            text-transform: uppercase;
-            color: #888;
-            letter-spacing: 1px;
-        }
-        
-        .toggle-buttons {
-            display: flex;
-            gap: 5px;
-        }
-        
+        .toggle-group { display: flex; flex-direction: column; gap: 5px; }
+        .toggle-group label { font-size: 10px; text-transform: uppercase; color: #888; letter-spacing: 1px; }
+        .toggle-buttons { display: flex; gap: 5px; }
         .toggle-btn {
-            padding: 8px 12px;
-            border: 1px solid #4a4a6a;
-            background: transparent;
-            color: #888;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-            transition: all 0.2s;
+            padding: 8px 12px; border: 1px solid #4a4a6a; background: transparent;
+            color: #888; border-radius: 4px; cursor: pointer; font-size: 12px; transition: all 0.2s;
         }
-        
-        .toggle-btn.active {
-            background: #6c63ff;
-            border-color: #6c63ff;
-            color: white;
-        }
-        
-        .toggle-btn:hover:not(.active) {
-            border-color: #6c63ff;
-            color: #fff;
-        }
-        
-        .color-legend {
-            display: flex;
-            gap: 15px;
-            align-items: center;
-            margin-left: auto;
-            font-size: 12px;
-            flex-wrap: wrap;
-        }
-        
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-        
-        .legend-color {
-            width: 20px;
-            height: 3px;
-            border-radius: 2px;
-        }
-        
+        .toggle-btn.active { background: #6c63ff; border-color: #6c63ff; color: white; }
+        .toggle-btn:hover:not(.active) { border-color: #6c63ff; color: #fff; }
+        .color-legend { display: flex; gap: 15px; align-items: center; margin-left: auto; font-size: 12px; flex-wrap: wrap; }
+        .legend-item { display: flex; align-items: center; gap: 5px; }
+        .legend-color { width: 20px; height: 3px; border-radius: 2px; }
         .legend-color.line { background: #00ff88; }
         .legend-color.arc { background: #ff69b4; }
         .legend-color.circle { background: #00bfff; }
-        .legend-color.ellipse { background: #ffa500; }
         .legend-color.polyline { background: #888; }
-        
-        .viewer-container {
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 20px;
-        }
-        
-        @media (max-width: 900px) {
-            .viewer-container {
-                grid-template-columns: 1fr;
-            }
-        }
-        
+        .viewer-container { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+        @media (max-width: 900px) { .viewer-container { grid-template-columns: 1fr; } }
         .viewer-3d {
-            background: #1a1a2e;
-            border-radius: 8px;
-            overflow: hidden;
-            aspect-ratio: 4/3;
-            border: 1px solid #3a3a5a;
+            background: #1a1a2e; border-radius: 8px; overflow: hidden;
+            aspect-ratio: 4/3; border: 1px solid #3a3a5a;
         }
-        
-        .viewer-3d canvas {
-            width: 100% !important;
-            height: 100% !important;
-        }
-        
+        .viewer-3d canvas { width: 100% !important; height: 100% !important; }
         .edge-info {
-            background: #2a2a4a;
-            border-radius: 8px;
-            padding: 15px;
-            font-family: monospace;
-            font-size: 12px;
-            max-height: 500px;
-            overflow: auto;
+            background: #2a2a4a; border-radius: 8px; padding: 15px;
+            font-family: monospace; font-size: 12px; max-height: 500px; overflow: auto;
         }
-        
-        .edge-info h4 {
-            color: #6c63ff;
-            margin-bottom: 10px;
-        }
-        
-        .edge-stat {
-            display: flex;
-            justify-content: space-between;
-            padding: 5px 0;
-            border-bottom: 1px solid #3a3a5a;
-        }
-        
-        .face-color-box {
-            display: inline-block;
-            width: 12px;
-            height: 12px;
-            border-radius: 2px;
-            margin-right: 5px;
-            vertical-align: middle;
-        }
-        
-        .new-file-btn {
-            background: #6c63ff;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-        
-        .new-file-btn:hover {
-            background: #5b54d6;
-        }
-        
-        .curve-details {
-            font-size: 10px;
-            color: #888;
-            margin-top: 10px;
-            max-height: 150px;
-            overflow-y: auto;
-        }
-        
-        .curve-detail-item {
-            padding: 4px 0;
-            border-bottom: 1px dashed #3a3a5a;
-        }
-        
-        .curve-type-badge {
-            display: inline-block;
-            padding: 1px 6px;
-            border-radius: 3px;
-            font-size: 9px;
-            font-weight: bold;
-            margin-right: 5px;
-        }
-        
+        .edge-info h4 { color: #6c63ff; margin-bottom: 10px; }
+        .edge-stat { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #3a3a5a; }
+        .face-color-box { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: 5px; vertical-align: middle; }
+        .new-file-btn { background: #6c63ff; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+        .new-file-btn:hover { background: #5b54d6; }
+        .curve-details { font-size: 10px; color: #888; margin-top: 10px; max-height: 200px; overflow-y: auto; }
+        .curve-detail-item { padding: 4px 0; border-bottom: 1px dashed #3a3a5a; }
+        .curve-type-badge { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 9px; font-weight: bold; margin-right: 5px; }
         .curve-type-badge.line { background: #00ff88; color: #000; }
         .curve-type-badge.arc { background: #ff69b4; color: #000; }
         .curve-type-badge.circle { background: #00bfff; color: #000; }
-        .curve-type-badge.ellipse { background: #ffa500; color: #000; }
         .curve-type-badge.polyline { background: #888; color: #fff; }
     </style>
 </head>
@@ -308,39 +88,21 @@
     <div class="container">
         <h1>Partcraft</h1>
         <p class="subtitle">STEP Drawing Generator</p>
-        
         <div id="status">Initializing...</div>
-        
         <div class="upload-area disabled" id="upload-area">
             <div class="upload-icon">📁</div>
             <p>Drop a STEP file here or click to upload</p>
             <p style="font-size: 12px; color: #888; margin-top: 8px;">.stp or .step files</p>
             <input type="file" id="file-input" accept=".stp,.step">
         </div>
-        
         <div class="results" id="results">
             <div class="info-bar">
-                <div class="info-item">
-                    <label>Part Name</label>
-                    <div class="value" id="part-name">-</div>
-                </div>
-                <div class="info-item">
-                    <label>X (Width)</label>
-                    <div class="value"><span id="dim-x">-</span>"</div>
-                </div>
-                <div class="info-item">
-                    <label>Y (Height)</label>
-                    <div class="value"><span id="dim-y">-</span>"</div>
-                </div>
-                <div class="info-item">
-                    <label>Z (Depth)</label>
-                    <div class="value"><span id="dim-z">-</span>"</div>
-                </div>
-                <div class="info-item">
-                    <button class="new-file-btn" id="new-file-btn">New File</button>
-                </div>
+                <div class="info-item"><label>Part Name</label><div class="value" id="part-name">-</div></div>
+                <div class="info-item"><label>X (Width)</label><div class="value"><span id="dim-x">-</span>"</div></div>
+                <div class="info-item"><label>Y (Height)</label><div class="value"><span id="dim-y">-</span>"</div></div>
+                <div class="info-item"><label>Z (Depth)</label><div class="value"><span id="dim-z">-</span>"</div></div>
+                <div class="info-item"><button class="new-file-btn" id="new-file-btn">New File</button></div>
             </div>
-            
             <div class="controls">
                 <div class="toggle-group">
                     <label>Edge Detection</label>
@@ -349,7 +111,6 @@
                         <button class="toggle-btn" id="btn-partcraft">Partcraft</button>
                     </div>
                 </div>
-                
                 <div class="toggle-group">
                     <label>Edge Colors</label>
                     <div class="toggle-buttons">
@@ -357,7 +118,6 @@
                         <button class="toggle-btn" id="btn-classified">Classified</button>
                     </div>
                 </div>
-                
                 <div class="toggle-group">
                     <label>Face Colors</label>
                     <div class="toggle-buttons">
@@ -365,1044 +125,702 @@
                         <button class="toggle-btn" id="btn-random">Random</button>
                     </div>
                 </div>
-                
                 <div class="color-legend" id="color-legend" style="display: none;">
-                    <div class="legend-item">
-                        <div class="legend-color line"></div>
-                        <span>Lines</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-color arc"></div>
-                        <span>Arcs</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-color circle"></div>
-                        <span>Circles</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-color ellipse"></div>
-                        <span>Ellipses</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-color polyline"></div>
-                        <span>Polylines</span>
-                    </div>
+                    <div class="legend-item"><div class="legend-color line"></div><span>Lines</span></div>
+                    <div class="legend-item"><div class="legend-color arc"></div><span>Arcs</span></div>
+                    <div class="legend-item"><div class="legend-color circle"></div><span>Circles</span></div>
+                    <div class="legend-item"><div class="legend-color polyline"></div><span>Polylines</span></div>
                 </div>
             </div>
-            
             <div class="viewer-container">
                 <div class="viewer-3d" id="viewer-3d"></div>
-                <div class="edge-info" id="edge-info">
-                    <h4>Edge Analysis</h4>
-                    <div id="edge-stats"></div>
-                </div>
+                <div class="edge-info" id="edge-info"><h4>Edge Analysis</h4><div id="edge-stats"></div></div>
             </div>
         </div>
     </div>
-    
     <div class="version">v0.0.14</div>
 
     <script src="https://cdn.jsdelivr.net/npm/occt-import-js@0.0.23/dist/occt-import-js.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script>
-        (async function() {
-            const statusEl = document.getElementById('status');
-            const uploadArea = document.getElementById('upload-area');
-            const fileInput = document.getElementById('file-input');
-            const resultsEl = document.getElementById('results');
-            const viewerEl = document.getElementById('viewer-3d');
-            const edgeStatsEl = document.getElementById('edge-stats');
-            const newFileBtn = document.getElementById('new-file-btn');
-            const colorLegend = document.getElementById('color-legend');
+    (async function() {
+        const statusEl = document.getElementById('status');
+        const uploadArea = document.getElementById('upload-area');
+        const fileInput = document.getElementById('file-input');
+        const resultsEl = document.getElementById('results');
+        const viewerEl = document.getElementById('viewer-3d');
+        const edgeStatsEl = document.getElementById('edge-stats');
+        const newFileBtn = document.getElementById('new-file-btn');
+        const colorLegend = document.getElementById('color-legend');
 
-            let occt = null;
-            let scene, camera, renderer, controls;
-            let currentGroup = null;
-            let meshObjects = { solid: null, random: null };
-            let edgeObjects = { current: null };
-            let analysisResults = null;
-            let faceColors = [];
+        let occt = null;
+        let scene, camera, renderer, controls;
+        let currentGroup = null;
+        let meshObjects = { solid: null, random: null };
+        let edgeObjects = { current: null };
+        let analysisResults = null;
+        let faceColors = [];
+        
+        let edgeMode = 'threejs';
+        let colorMode = 'black';
+        let faceMode = 'solid';
+
+        const CURVE_COLORS = { line: 0x00ff88, arc: 0xff69b4, circle: 0x00bfff, polyline: 0x888888, unknown: 0x000000 };
+
+        function log(msg) { statusEl.textContent = msg; }
+        function toFloat32Array(arr) { return arr instanceof Float32Array ? arr : new Float32Array(arr); }
+        function toUint32Array(arr) { return arr instanceof Uint32Array ? arr : new Uint32Array(arr); }
+        
+        function generateDistinctColors(count) {
+            const colors = [];
+            for (let i = 0; i < count; i++) {
+                colors.push({ h: (i * 137.508) % 360, s: 70 + (i % 3) * 10, l: 50 + (i % 2) * 15 });
+            }
+            return colors;
+        }
+        
+        function hslToHex(h, s, l) {
+            s /= 100; l /= 100;
+            const a = s * Math.min(l, 1 - l);
+            const f = n => { const k = (n + h / 30) % 12; return Math.round(255 * (l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1))).toString(16).padStart(2, '0'); };
+            return `#${f(0)}${f(8)}${f(4)}`;
+        }
+
+        function initThreeJS() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1a1a2e);
+            const width = viewerEl.clientWidth, height = viewerEl.clientHeight;
+            camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 10000);
+            camera.position.set(50, 50, 50);
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            viewerEl.appendChild(renderer.domElement);
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            scene.add(new THREE.AmbientLight(0x404040, 0.5));
+            const light1 = new THREE.DirectionalLight(0xffffff, 0.8);
+            light1.position.set(50, 100, 50);
+            scene.add(light1);
+            const light2 = new THREE.DirectionalLight(0xffffff, 0.4);
+            light2.position.set(-50, -50, -50);
+            scene.add(light2);
+            animate();
+        }
+        
+        function animate() { requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); }
+        
+        function fitCameraToObject(object) {
+            const box = new THREE.Box3().setFromObject(object);
+            const center = box.getCenter(new THREE.Vector3());
+            const size = box.getSize(new THREE.Vector3());
+            const maxDim = Math.max(size.x, size.y, size.z);
+            const fov = camera.fov * (Math.PI / 180);
+            let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2)) * 2.5;
+            camera.position.set(center.x + cameraZ * 0.5, center.y + cameraZ * 0.5, center.z + cameraZ);
+            camera.lookAt(center);
+            controls.target.copy(center);
+            controls.update();
+        }
+
+        // ============================================
+        // ROBUST CURVE CLASSIFICATION ENGINE
+        // Ported from Python reference implementation
+        // ============================================
+
+        // Vector math helpers
+        function vec3(x, y, z) { return { x, y, z }; }
+        function vecSub(a, b) { return vec3(a.x - b.x, a.y - b.y, a.z - b.z); }
+        function vecAdd(a, b) { return vec3(a.x + b.x, a.y + b.y, a.z + b.z); }
+        function vecScale(v, s) { return vec3(v.x * s, v.y * s, v.z * s); }
+        function vecDot(a, b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
+        function vecCross(a, b) { return vec3(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x); }
+        function vecLen(v) { return Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z); }
+        function vecNorm(v) { const l = vecLen(v); return l > 1e-10 ? vecScale(v, 1/l) : vec3(0,0,0); }
+        function vecDist(a, b) { return vecLen(vecSub(a, b)); }
+
+        // Fit plane using covariance matrix
+        function fitPlane(points) {
+            const n = points.length;
+            if (n < 3) return null;
             
-            let edgeMode = 'threejs';
-            let colorMode = 'black';
-            let faceMode = 'solid';
-
-            // Curve type colors
-            const CURVE_COLORS = {
-                line: 0x00ff88,
-                arc: 0xff69b4,
-                circle: 0x00bfff,
-                ellipse: 0xffa500,
-                polyline: 0x888888,
-                unknown: 0x000000
-            };
-
-            function log(msg) {
-                statusEl.textContent = msg;
+            // Compute centroid
+            let cx = 0, cy = 0, cz = 0;
+            for (const p of points) { cx += p.x; cy += p.y; cz += p.z; }
+            const centroid = vec3(cx/n, cy/n, cz/n);
+            
+            // Build covariance matrix
+            let xx = 0, xy = 0, xz = 0, yy = 0, yz = 0, zz = 0;
+            for (const p of points) {
+                const dx = p.x - centroid.x, dy = p.y - centroid.y, dz = p.z - centroid.z;
+                xx += dx * dx; xy += dx * dy; xz += dx * dz;
+                yy += dy * dy; yz += dy * dz; zz += dz * dz;
             }
             
-            function toFloat32Array(arr) {
-                if (arr instanceof Float32Array) return arr;
-                const result = new Float32Array(arr.length);
-                for (let i = 0; i < arr.length; i++) result[i] = arr[i];
-                return result;
+            // Find normal via determinants
+            const detX = yy * zz - yz * yz;
+            const detY = xx * zz - xz * xz;
+            const detZ = xx * yy - xy * xy;
+            
+            let normal;
+            if (detX >= detY && detX >= detZ) {
+                normal = vec3(detX, xz * yz - xy * zz, xy * yz - xz * yy);
+            } else if (detY >= detX && detY >= detZ) {
+                normal = vec3(xz * yz - xy * zz, detY, xy * xz - yz * xx);
+            } else {
+                normal = vec3(xy * yz - xz * yy, xy * xz - yz * xx, detZ);
             }
             
-            function toUint32Array(arr) {
-                if (arr instanceof Uint32Array) return arr;
-                const result = new Uint32Array(arr.length);
-                for (let i = 0; i < arr.length; i++) result[i] = arr[i];
-                return result;
+            if (vecLen(normal) < 1e-10) {
+                const v1 = vecSub(points[1], points[0]);
+                const v2 = vecSub(points[Math.min(2, n-1)], points[0]);
+                normal = vecCross(v1, v2);
             }
             
-            function generateDistinctColors(count) {
-                const colors = [];
-                for (let i = 0; i < count; i++) {
-                    const hue = (i * 137.508) % 360;
-                    const saturation = 70 + (i % 3) * 10;
-                    const lightness = 50 + (i % 2) * 15;
-                    colors.push({ h: hue, s: saturation, l: lightness });
+            return { centroid, normal: vecNorm(normal) };
+        }
+
+        // Project 3D points to 2D plane
+        function projectTo2D(points, centroid, normal) {
+            let arbitrary = Math.abs(normal.x) < 0.9 ? vec3(1,0,0) : vec3(0,1,0);
+            let xAxis = vecSub(arbitrary, vecScale(normal, vecDot(arbitrary, normal)));
+            xAxis = vecNorm(xAxis);
+            const yAxis = vecNorm(vecCross(normal, xAxis));
+            
+            const points2D = points.map(p => {
+                const rel = vecSub(p, centroid);
+                return { x: vecDot(rel, xAxis), y: vecDot(rel, yAxis) };
+            });
+            
+            return { points2D, xAxis, yAxis };
+        }
+
+        // Fit circle using least squares (Kasa method)
+        function fitCircle2D(points2D) {
+            const n = points2D.length;
+            if (n < 3) return null;
+            
+            let sumX = 0, sumY = 0, sumX2 = 0, sumY2 = 0, sumXY = 0;
+            let sumX3 = 0, sumY3 = 0, sumX2Y = 0, sumXY2 = 0;
+            
+            for (const p of points2D) {
+                const x = p.x, y = p.y;
+                const x2 = x * x, y2 = y * y;
+                sumX += x; sumY += y;
+                sumX2 += x2; sumY2 += y2; sumXY += x * y;
+                sumX3 += x2 * x; sumY3 += y2 * y;
+                sumX2Y += x2 * y; sumXY2 += x * y2;
+            }
+            
+            // Solve 3x3 system via Gaussian elimination
+            const A = [[sumX2, sumXY, sumX], [sumXY, sumY2, sumY], [sumX, sumY, n]];
+            const b = [-(sumX3 + sumXY2), -(sumX2Y + sumY3), -(sumX2 + sumY2)];
+            const augmented = A.map((row, i) => [...row, b[i]]);
+            
+            for (let col = 0; col < 3; col++) {
+                let maxRow = col;
+                for (let row = col + 1; row < 3; row++) {
+                    if (Math.abs(augmented[row][col]) > Math.abs(augmented[maxRow][col])) maxRow = row;
                 }
-                return colors;
+                [augmented[col], augmented[maxRow]] = [augmented[maxRow], augmented[col]];
+                if (Math.abs(augmented[col][col]) < 1e-10) return null;
+                for (let row = col + 1; row < 3; row++) {
+                    const factor = augmented[row][col] / augmented[col][col];
+                    for (let j = col; j < 4; j++) augmented[row][j] -= factor * augmented[col][j];
+                }
             }
             
-            function hslToHex(h, s, l) {
-                s /= 100; l /= 100;
-                const a = s * Math.min(l, 1 - l);
-                const f = n => {
-                    const k = (n + h / 30) % 12;
-                    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
-                    return Math.round(255 * color).toString(16).padStart(2, '0');
+            const x = [0, 0, 0];
+            for (let i = 2; i >= 0; i--) {
+                x[i] = augmented[i][3];
+                for (let j = i + 1; j < 3; j++) x[i] -= augmented[i][j] * x[j];
+                x[i] /= augmented[i][i];
+            }
+            
+            const D = x[0], E = x[1], F = x[2];
+            const cx = -D / 2, cy = -E / 2;
+            const radiusSq = cx * cx + cy * cy - F;
+            
+            if (radiusSq <= 0) return null;
+            const radius = Math.sqrt(radiusSq);
+            
+            let errorSum = 0;
+            for (const p of points2D) {
+                const dist = Math.sqrt((p.x - cx) ** 2 + (p.y - cy) ** 2);
+                errorSum += (dist - radius) ** 2;
+            }
+            const rmsError = Math.sqrt(errorSum / n);
+            
+            return { cx, cy, radius, rmsError };
+        }
+
+        // Calculate arc sweep angle
+        function calculateArcAngles(points2D, cx, cy) {
+            const angles = points2D.map(p => Math.atan2(p.y - cy, p.x - cx) * 180 / Math.PI);
+            const sorted = [...angles].sort((a, b) => a - b);
+            
+            let maxGap = 0, maxGapIdx = 0;
+            for (let i = 0; i < sorted.length; i++) {
+                const next = (i + 1) % sorted.length;
+                let gap = sorted[next] - sorted[i];
+                if (next === 0) gap += 360;
+                if (gap > maxGap) { maxGap = gap; maxGapIdx = i; }
+            }
+            
+            const startIdx = (maxGapIdx + 1) % sorted.length;
+            const startAngle = sorted[startIdx];
+            const endAngle = sorted[maxGapIdx];
+            let sweep = endAngle - startAngle;
+            if (sweep < 0) sweep += 360;
+            
+            return { startAngle, endAngle, sweep };
+        }
+
+        // Check if points are collinear
+        function isCollinear(points, tolerance = 0.01) {
+            if (points.length < 3) return true;
+            
+            let p0 = points[0], p1 = points[points.length - 1];
+            let lineVec = vecSub(p1, p0);
+            let lineLen = vecLen(lineVec);
+            
+            if (lineLen < 1e-10) {
+                const midIdx = Math.floor(points.length / 2);
+                p1 = points[midIdx];
+                lineVec = vecSub(p1, p0);
+                lineLen = vecLen(lineVec);
+                if (lineLen < 1e-10) return true;
+            }
+            
+            const lineDir = vecNorm(lineVec);
+            let maxDist = 0;
+            
+            for (let i = 1; i < points.length - 1; i++) {
+                const v = vecSub(points[i], p0);
+                const projLen = vecDot(v, lineDir);
+                const projPoint = vecAdd(p0, vecScale(lineDir, projLen));
+                const dist = vecDist(points[i], projPoint);
+                maxDist = Math.max(maxDist, dist);
+            }
+            
+            return maxDist < tolerance * lineLen;
+        }
+
+        // Check if curve is closed
+        function isClosed(points, tolerance = 0.001) {
+            if (points.length < 3) return false;
+            const dist = vecDist(points[0], points[points.length - 1]);
+            let maxRange = 0;
+            for (const p of points) {
+                maxRange = Math.max(maxRange, Math.abs(p.x), Math.abs(p.y), Math.abs(p.z));
+            }
+            return dist < tolerance || dist < maxRange * 0.01;
+        }
+
+        // Calculate total curve length
+        function totalLength(points) {
+            let len = 0;
+            for (let i = 0; i < points.length - 1; i++) {
+                len += vecDist(points[i], points[i + 1]);
+            }
+            return len;
+        }
+
+        // Main classification function
+        function classifyCurve(points, tolerance = 0.02) {
+            const n = points.length;
+            
+            // RULE 1: Less than 3 points = LINE
+            if (n < 3) {
+                const length = n === 2 ? vecDist(points[0], points[1]) : 0;
+                return { type: 'line', points, length };
+            }
+            
+            // RULE 2: Check collinearity FIRST
+            if (isCollinear(points)) {
+                return { type: 'line', points, length: totalLength(points) };
+            }
+            
+            // For 3+ non-collinear points, test for arc/circle
+            const curveLength = totalLength(points);
+            const closed = isClosed(points);
+            
+            // Step 1: Fit plane
+            const plane = fitPlane(points);
+            if (!plane) return { type: 'polyline', points, reason: 'no plane' };
+            
+            // Step 2: Check planarity
+            let maxPlaneDist = 0;
+            for (const p of points) {
+                const dist = Math.abs(vecDot(vecSub(p, plane.centroid), plane.normal));
+                maxPlaneDist = Math.max(maxPlaneDist, dist);
+            }
+            
+            if (maxPlaneDist > curveLength * 0.01) {
+                return { type: 'polyline', points, reason: 'non-planar', error: maxPlaneDist };
+            }
+            
+            // Step 3: Project to 2D and fit circle
+            const { points2D, xAxis, yAxis } = projectTo2D(points, plane.centroid, plane.normal);
+            const circleFit = fitCircle2D(points2D);
+            
+            if (!circleFit || circleFit.radius < 1e-10) {
+                return { type: 'polyline', points, reason: 'circle fit failed' };
+            }
+            
+            // Step 4: Check fit quality
+            const relativeError = circleFit.rmsError / circleFit.radius;
+            
+            if (relativeError > tolerance) {
+                return { type: 'polyline', points, reason: 'poor fit', error: relativeError };
+            }
+            
+            // Step 5: Calculate 3D center
+            const center = vecAdd(
+                vecAdd(plane.centroid, vecScale(xAxis, circleFit.cx)),
+                vecScale(yAxis, circleFit.cy)
+            );
+            
+            // Step 6: Calculate arc angles
+            const { startAngle, endAngle, sweep } = calculateArcAngles(points2D, circleFit.cx, circleFit.cy);
+            
+            // Step 7: Determine if circle or arc
+            const isFullCircle = (closed && sweep > 300) || sweep > 350;
+            
+            if (isFullCircle) {
+                return {
+                    type: 'circle', points, center, radius: circleFit.radius,
+                    normal: plane.normal, error: relativeError
                 };
-                return `#${f(0)}${f(8)}${f(4)}`;
             }
+            
+            return {
+                type: 'arc', points, center, radius: circleFit.radius,
+                startAngle, endAngle, sweep, normal: plane.normal, error: relativeError
+            };
+        }
 
-            function initThreeJS() {
-                scene = new THREE.Scene();
-                scene.background = new THREE.Color(0x1a1a2e);
-                
-                const width = viewerEl.clientWidth;
-                const height = viewerEl.clientHeight;
-                
-                camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 10000);
-                camera.position.set(50, 50, 50);
-                
-                renderer = new THREE.WebGLRenderer({ antialias: true });
-                renderer.setSize(width, height);
-                renderer.setPixelRatio(window.devicePixelRatio);
-                viewerEl.appendChild(renderer.domElement);
-                
-                controls = new THREE.OrbitControls(camera, renderer.domElement);
-                controls.enableDamping = true;
-                
-                scene.add(new THREE.AmbientLight(0x404040, 0.5));
-                const light1 = new THREE.DirectionalLight(0xffffff, 0.8);
-                light1.position.set(50, 100, 50);
-                scene.add(light1);
-                const light2 = new THREE.DirectionalLight(0xffffff, 0.4);
-                light2.position.set(-50, -50, -50);
-                scene.add(light2);
-                
-                animate();
+        // Get raw edges from Three.js
+        function getEdgesFromThreeJS(geometry) {
+            const edgesGeometry = new THREE.EdgesGeometry(geometry, 30);
+            const positions = edgesGeometry.attributes.position.array;
+            const edges = [];
+            for (let i = 0; i < positions.length; i += 6) {
+                edges.push({
+                    start: vec3(positions[i], positions[i+1], positions[i+2]),
+                    end: vec3(positions[i+3], positions[i+4], positions[i+5])
+                });
             }
-            
-            function animate() {
-                requestAnimationFrame(animate);
-                controls.update();
-                renderer.render(scene, camera);
-            }
-            
-            function fitCameraToObject(object) {
-                const box = new THREE.Box3().setFromObject(object);
-                const center = box.getCenter(new THREE.Vector3());
-                const size = box.getSize(new THREE.Vector3());
-                const maxDim = Math.max(size.x, size.y, size.z);
-                const fov = camera.fov * (Math.PI / 180);
-                let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2)) * 2.5;
-                camera.position.set(center.x + cameraZ * 0.5, center.y + cameraZ * 0.5, center.z + cameraZ);
-                camera.lookAt(center);
-                controls.target.copy(center);
-                controls.update();
-            }
+            return edges;
+        }
 
-            // ============================================
-            // CURVE CLASSIFICATION ENGINE
-            // Like Grasshopper's Is Arc/Circle/Ellipse
-            // ============================================
+        // Chain edges into continuous polylines
+        function chainEdges(edges) {
+            const tolerance = 0.0001;
+            const used = new Array(edges.length).fill(false);
+            const chains = [];
             
-            // Get raw edges from Three.js EdgesGeometry
-            function getEdgesFromThreeJS(geometry) {
-                const edgesGeometry = new THREE.EdgesGeometry(geometry, 30);
-                const positions = edgesGeometry.attributes.position.array;
-                
-                const edges = [];
-                for (let i = 0; i < positions.length; i += 6) {
-                    edges.push({
-                        start: new THREE.Vector3(positions[i], positions[i+1], positions[i+2]),
-                        end: new THREE.Vector3(positions[i+3], positions[i+4], positions[i+5])
-                    });
-                }
-                return edges;
-            }
+            function pointsEqual(p1, p2) { return vecDist(p1, p2) < tolerance; }
             
-            // Chain edges into continuous polylines
-            function chainEdges(edges) {
-                const tolerance = 0.0001;
-                const used = new Array(edges.length).fill(false);
-                const chains = [];
-                
-                function pointsEqual(p1, p2) {
-                    return p1.distanceTo(p2) < tolerance;
-                }
-                
-                function findConnecting(point, excludeIdx) {
-                    for (let i = 0; i < edges.length; i++) {
-                        if (used[i] || i === excludeIdx) continue;
-                        if (pointsEqual(edges[i].start, point)) return { idx: i, reverse: false };
-                        if (pointsEqual(edges[i].end, point)) return { idx: i, reverse: true };
-                    }
-                    return null;
-                }
-                
+            function findConnecting(point) {
                 for (let i = 0; i < edges.length; i++) {
                     if (used[i]) continue;
-                    
-                    const chain = [edges[i].start.clone(), edges[i].end.clone()];
-                    used[i] = true;
-                    
-                    // Extend forward
-                    let searching = true;
-                    while (searching) {
-                        const found = findConnecting(chain[chain.length - 1], -1);
-                        if (found) {
-                            used[found.idx] = true;
-                            const edge = edges[found.idx];
-                            chain.push(found.reverse ? edge.start.clone() : edge.end.clone());
-                        } else {
-                            searching = false;
-                        }
-                    }
-                    
-                    // Extend backward
-                    searching = true;
-                    while (searching) {
-                        const found = findConnecting(chain[0], -1);
-                        if (found) {
-                            used[found.idx] = true;
-                            const edge = edges[found.idx];
-                            chain.unshift(found.reverse ? edge.start.clone() : edge.end.clone());
-                        } else {
-                            searching = false;
-                        }
-                    }
-                    
-                    chains.push(chain);
+                    if (pointsEqual(edges[i].start, point)) return { idx: i, reverse: false };
+                    if (pointsEqual(edges[i].end, point)) return { idx: i, reverse: true };
                 }
-                
-                return chains;
+                return null;
             }
             
-            // Check if chain is closed (first point == last point)
-            function isChainClosed(chain, tolerance = 0.001) {
-                if (chain.length < 3) return false;
-                return chain[0].distanceTo(chain[chain.length - 1]) < tolerance;
+            for (let i = 0; i < edges.length; i++) {
+                if (used[i]) continue;
+                
+                const chain = [edges[i].start, edges[i].end];
+                used[i] = true;
+                
+                // Extend forward
+                let found;
+                while ((found = findConnecting(chain[chain.length - 1]))) {
+                    used[found.idx] = true;
+                    chain.push(found.reverse ? edges[found.idx].start : edges[found.idx].end);
+                }
+                
+                // Extend backward
+                while ((found = findConnecting(chain[0]))) {
+                    used[found.idx] = true;
+                    chain.unshift(found.reverse ? edges[found.idx].start : edges[found.idx].end);
+                }
+                
+                chains.push(chain);
             }
             
-            // Calculate total arc length of a chain
-            function chainLength(chain) {
-                let len = 0;
-                for (let i = 0; i < chain.length - 1; i++) {
-                    len += chain[i].distanceTo(chain[i + 1]);
+            return chains;
+        }
+
+        // Main Partcraft detection
+        function detectEdgesPartcraft(geometry) {
+            const rawEdges = getEdgesFromThreeJS(geometry);
+            console.log(`Raw edges: ${rawEdges.length}`);
+            
+            const chains = chainEdges(rawEdges);
+            console.log(`Chains: ${chains.length}`);
+            
+            const classified = [];
+            const counts = { line: 0, arc: 0, circle: 0, polyline: 0 };
+            const curveDetails = [];
+            
+            for (let i = 0; i < chains.length; i++) {
+                const result = classifyCurve(chains[i]);
+                counts[result.type]++;
+                
+                let detail = `#${i}: ${result.type.toUpperCase()}`;
+                if (result.type === 'line') detail += ` len=${result.length.toFixed(3)}"`;
+                else if (result.type === 'arc') detail += ` R=${result.radius.toFixed(3)}" sweep=${result.sweep.toFixed(1)}°`;
+                else if (result.type === 'circle') detail += ` R=${result.radius.toFixed(3)}"`;
+                else if (result.type === 'polyline') detail += ` (${result.reason || 'complex'})`;
+                
+                curveDetails.push({ index: i, type: result.type, detail, ...result });
+                console.log(`Chain ${i}: ${detail}`);
+                
+                // Convert to segments
+                for (let j = 0; j < result.points.length - 1; j++) {
+                    classified.push({ start: result.points[j], end: result.points[j + 1], type: result.type });
                 }
-                return len;
             }
             
-            // Get the best-fit plane for a set of points (using PCA)
-            function fitPlane(points) {
-                if (points.length < 3) return null;
-                
-                // Compute centroid
-                const centroid = new THREE.Vector3();
-                for (const p of points) centroid.add(p);
-                centroid.divideScalar(points.length);
-                
-                // Build covariance matrix
-                let xx = 0, xy = 0, xz = 0, yy = 0, yz = 0, zz = 0;
-                for (const p of points) {
-                    const dx = p.x - centroid.x;
-                    const dy = p.y - centroid.y;
-                    const dz = p.z - centroid.z;
-                    xx += dx * dx;
-                    xy += dx * dy;
-                    xz += dx * dz;
-                    yy += dy * dy;
-                    yz += dy * dz;
-                    zz += dz * dz;
+            return { edges: classified, chains: chains.length, counts, curveDetails };
+        }
+
+        function detectEdgesThreeJS(geometry) {
+            const edges = getEdgesFromThreeJS(geometry);
+            return { edges: edges.map(e => ({ ...e, type: 'unknown' })), counts: { unknown: edges.length } };
+        }
+
+        function buildEdgeVisualization(edges, colored) {
+            const group = new THREE.Group();
+            if (colored) {
+                const byType = {};
+                for (const edge of edges) {
+                    const type = edge.type || 'unknown';
+                    if (!byType[type]) byType[type] = [];
+                    byType[type].push(edge);
                 }
-                
-                // Find normal via smallest eigenvector (power iteration on cross products)
-                // Simplified: try each axis-aligned candidate
-                const detX = yy * zz - yz * yz;
-                const detY = xx * zz - xz * xz;
-                const detZ = xx * yy - xy * xy;
-                
-                let normal;
-                if (detX >= detY && detX >= detZ) {
-                    normal = new THREE.Vector3(detX, xz * yz - xy * zz, xy * yz - xz * yy);
-                } else if (detY >= detX && detY >= detZ) {
-                    normal = new THREE.Vector3(xz * yz - xy * zz, detY, xy * xz - yz * xx);
-                } else {
-                    normal = new THREE.Vector3(xy * yz - xz * yy, xy * xz - yz * xx, detZ);
-                }
-                
-                if (normal.length() < 0.0001) {
-                    // Fallback: use first two vectors
-                    if (points.length >= 3) {
-                        const v1 = points[1].clone().sub(points[0]);
-                        const v2 = points[2].clone().sub(points[0]);
-                        normal = v1.cross(v2);
-                    }
-                }
-                
-                if (normal.length() < 0.0001) return null;
-                normal.normalize();
-                
-                return { centroid, normal };
-            }
-            
-            // Project 3D points to 2D plane coordinates
-            function projectTo2D(points, plane) {
-                const { centroid, normal } = plane;
-                
-                // Create orthonormal basis
-                let xAxis = new THREE.Vector3(1, 0, 0);
-                if (Math.abs(normal.dot(xAxis)) > 0.9) {
-                    xAxis = new THREE.Vector3(0, 1, 0);
-                }
-                xAxis = xAxis.clone().sub(normal.clone().multiplyScalar(normal.dot(xAxis))).normalize();
-                const yAxis = normal.clone().cross(xAxis).normalize();
-                
-                return {
-                    points2D: points.map(p => {
-                        const rel = p.clone().sub(centroid);
-                        return { x: rel.dot(xAxis), y: rel.dot(yAxis) };
-                    }),
-                    xAxis,
-                    yAxis,
-                    centroid,
-                    normal
-                };
-            }
-            
-            // Fit circle to 2D points using least squares (Kasa method)
-            function fitCircle2D(points2D) {
-                const n = points2D.length;
-                if (n < 3) return null;
-                
-                let sumX = 0, sumY = 0, sumX2 = 0, sumY2 = 0, sumXY = 0;
-                let sumX3 = 0, sumY3 = 0, sumX2Y = 0, sumXY2 = 0;
-                
-                for (const p of points2D) {
-                    const x2 = p.x * p.x;
-                    const y2 = p.y * p.y;
-                    sumX += p.x;
-                    sumY += p.y;
-                    sumX2 += x2;
-                    sumY2 += y2;
-                    sumXY += p.x * p.y;
-                    sumX3 += x2 * p.x;
-                    sumY3 += y2 * p.y;
-                    sumX2Y += x2 * p.y;
-                    sumXY2 += p.x * y2;
-                }
-                
-                const A = n * sumX2 - sumX * sumX;
-                const B = n * sumXY - sumX * sumY;
-                const C = n * sumY2 - sumY * sumY;
-                const D = 0.5 * (n * sumX3 + n * sumXY2 - sumX * sumX2 - sumX * sumY2);
-                const E = 0.5 * (n * sumX2Y + n * sumY3 - sumY * sumX2 - sumY * sumY2);
-                
-                const denom = A * C - B * B;
-                if (Math.abs(denom) < 1e-10) return null;
-                
-                const cx = (D * C - B * E) / denom;
-                const cy = (A * E - B * D) / denom;
-                
-                // Calculate radius as mean distance
-                let radiusSum = 0;
-                for (const p of points2D) {
-                    radiusSum += Math.sqrt((p.x - cx) ** 2 + (p.y - cy) ** 2);
-                }
-                const radius = radiusSum / n;
-                
-                // Calculate fitting error (RMS)
-                let errorSum = 0;
-                for (const p of points2D) {
-                    const dist = Math.sqrt((p.x - cx) ** 2 + (p.y - cy) ** 2);
-                    errorSum += (dist - radius) ** 2;
-                }
-                const rmsError = Math.sqrt(errorSum / n);
-                
-                return { cx, cy, radius, rmsError };
-            }
-            
-            // Fit ellipse to 2D points using direct least squares
-            function fitEllipse2D(points2D) {
-                const n = points2D.length;
-                if (n < 5) return null;
-                
-                // Direct ellipse fit using algebraic distance
-                // Ellipse equation: Ax² + Bxy + Cy² + Dx + Ey + F = 0
-                // Constraint: B² - 4AC < 0 (to ensure ellipse)
-                
-                // Build design matrix
-                const D1 = []; // x², xy, y²
-                const D2 = []; // x, y, 1
-                
-                for (const p of points2D) {
-                    D1.push([p.x * p.x, p.x * p.y, p.y * p.y]);
-                    D2.push([p.x, p.y, 1]);
-                }
-                
-                // Compute scatter matrices S1, S2, S3
-                const S1 = [[0,0,0],[0,0,0],[0,0,0]];
-                const S2 = [[0,0,0],[0,0,0],[0,0,0]];
-                const S3 = [[0,0,0],[0,0,0],[0,0,0]];
-                
-                for (let i = 0; i < n; i++) {
-                    for (let j = 0; j < 3; j++) {
-                        for (let k = 0; k < 3; k++) {
-                            S1[j][k] += D1[i][j] * D1[i][k];
-                            S2[j][k] += D1[i][j] * D2[i][k];
-                            S3[j][k] += D2[i][j] * D2[i][k];
-                        }
-                    }
-                }
-                
-                // Simplified: Use circle fit as fallback for ellipse
-                // Full ellipse fitting requires eigenvalue decomposition
-                const circleFit = fitCircle2D(points2D);
-                if (!circleFit) return null;
-                
-                // Check if it's more ellipse-like by analyzing aspect ratio
-                // This is a simplified check - could be improved with full ellipse fitting
-                let minX = Infinity, maxX = -Infinity;
-                let minY = Infinity, maxY = -Infinity;
-                
-                for (const p of points2D) {
-                    const dx = p.x - circleFit.cx;
-                    const dy = p.y - circleFit.cy;
-                    minX = Math.min(minX, dx);
-                    maxX = Math.max(maxX, dx);
-                    minY = Math.min(minY, dy);
-                    maxY = Math.max(maxY, dy);
-                }
-                
-                const extentX = maxX - minX;
-                const extentY = maxY - minY;
-                const aspectRatio = Math.max(extentX, extentY) / Math.min(extentX, extentY);
-                
-                return {
-                    cx: circleFit.cx,
-                    cy: circleFit.cy,
-                    radiusX: extentX / 2,
-                    radiusY: extentY / 2,
-                    aspectRatio,
-                    rmsError: circleFit.rmsError
-                };
-            }
-            
-            // Check if points are collinear
-            function arePointsCollinear(points, tolerance = 0.001) {
-                if (points.length < 3) return true;
-                
-                // Use first and last point to define line
-                const p1 = points[0];
-                const p2 = points[points.length - 1];
-                const lineDir = p2.clone().sub(p1);
-                const lineLen = lineDir.length();
-                
-                if (lineLen < 0.0001) return true;
-                lineDir.normalize();
-                
-                // Check all intermediate points
-                for (let i = 1; i < points.length - 1; i++) {
-                    const v = points[i].clone().sub(p1);
-                    const proj = v.dot(lineDir);
-                    const closest = p1.clone().add(lineDir.clone().multiplyScalar(proj));
-                    const dist = points[i].distanceTo(closest);
-                    
-                    if (dist > tolerance * lineLen + 0.001) {
-                        return false;
-                    }
-                }
-                
-                return true;
-            }
-            
-            // Calculate arc angles
-            function calculateArcAngles(points2D, cx, cy) {
-                const angles = points2D.map(p => Math.atan2(p.y - cy, p.x - cx));
-                
-                // Sort angles and find the sweep
-                const sortedAngles = [...angles].sort((a, b) => a - b);
-                
-                // Find largest gap (this is outside the arc)
-                let maxGap = 0;
-                let gapStart = 0;
-                for (let i = 0; i < sortedAngles.length; i++) {
-                    const next = (i + 1) % sortedAngles.length;
-                    let gap = sortedAngles[next] - sortedAngles[i];
-                    if (next === 0) gap += 2 * Math.PI;
-                    if (gap > maxGap) {
-                        maxGap = gap;
-                        gapStart = i;
-                    }
-                }
-                
-                const startAngle = sortedAngles[(gapStart + 1) % sortedAngles.length];
-                const endAngle = sortedAngles[gapStart];
-                let sweep = endAngle - startAngle;
-                if (sweep < 0) sweep += 2 * Math.PI;
-                
-                return {
-                    startAngle: startAngle * 180 / Math.PI,
-                    endAngle: endAngle * 180 / Math.PI,
-                    sweep: sweep * 180 / Math.PI
-                };
-            }
-            
-            // Main classification function - like Grasshopper's Is Arc/Circle/Ellipse
-            function classifyCurve(chain) {
-                const n = chain.length;
-                
-                // Single point or empty
-                if (n < 2) {
-                    return { type: 'polyline', points: chain, reason: 'too few points' };
-                }
-                
-                // Two points = always a line
-                if (n === 2) {
-                    const length = chain[0].distanceTo(chain[1]);
-                    return { 
-                        type: 'line', 
-                        points: chain,
-                        length,
-                        start: chain[0],
-                        end: chain[1]
-                    };
-                }
-                
-                const totalLength = chainLength(chain);
-                const closed = isChainClosed(chain);
-                
-                // Check for line first (collinearity)
-                const lineTolerance = totalLength * 0.005; // 0.5% of length
-                if (arePointsCollinear(chain, lineTolerance)) {
-                    return {
-                        type: 'line',
-                        points: chain,
-                        length: totalLength,
-                        start: chain[0],
-                        end: chain[chain.length - 1]
-                    };
-                }
-                
-                // Fit plane and project to 2D
-                const plane = fitPlane(chain);
-                if (!plane) {
-                    return { type: 'polyline', points: chain, reason: 'no plane fit' };
-                }
-                
-                // Check planarity
-                let maxPlaneDist = 0;
-                for (const p of chain) {
-                    const dist = Math.abs(p.clone().sub(plane.centroid).dot(plane.normal));
-                    maxPlaneDist = Math.max(maxPlaneDist, dist);
-                }
-                
-                const planarityTolerance = totalLength * 0.01;
-                if (maxPlaneDist > planarityTolerance) {
-                    // 3D curve - not planar
-                    return { type: 'polyline', points: chain, reason: 'non-planar', maxPlaneDist };
-                }
-                
-                // Project to 2D and fit circle
-                const projection = projectTo2D(chain, plane);
-                const circleFit = fitCircle2D(projection.points2D);
-                
-                if (!circleFit) {
-                    return { type: 'polyline', points: chain, reason: 'circle fit failed' };
-                }
-                
-                // Calculate relative error
-                const relativeError = circleFit.rmsError / circleFit.radius;
-                
-                // Threshold for accepting as circular
-                const circularThreshold = 0.02; // 2% error
-                
-                if (relativeError > circularThreshold) {
-                    // Try ellipse fit
-                    const ellipseFit = fitEllipse2D(projection.points2D);
-                    
-                    if (ellipseFit && ellipseFit.aspectRatio > 1.15) {
-                        // Significant aspect ratio - it's an ellipse
-                        const center3D = projection.centroid.clone()
-                            .add(projection.xAxis.clone().multiplyScalar(ellipseFit.cx))
-                            .add(projection.yAxis.clone().multiplyScalar(ellipseFit.cy));
-                        
-                        return {
-                            type: 'ellipse',
-                            points: chain,
-                            center: center3D,
-                            radiusX: ellipseFit.radiusX,
-                            radiusY: ellipseFit.radiusY,
-                            aspectRatio: ellipseFit.aspectRatio,
-                            normal: plane.normal,
-                            closed,
-                            error: ellipseFit.rmsError
-                        };
-                    }
-                    
-                    // Doesn't fit well - polyline
-                    return { 
-                        type: 'polyline', 
-                        points: chain, 
-                        reason: 'poor circular fit',
-                        error: relativeError
-                    };
-                }
-                
-                // Good circular fit - determine if arc or circle
-                const center3D = projection.centroid.clone()
-                    .add(projection.xAxis.clone().multiplyScalar(circleFit.cx))
-                    .add(projection.yAxis.clone().multiplyScalar(circleFit.cy));
-                
-                const angles = calculateArcAngles(projection.points2D, circleFit.cx, circleFit.cy);
-                
-                // If closed and sweep is ~360°, it's a circle
-                if (closed && angles.sweep > 350) {
-                    return {
-                        type: 'circle',
-                        points: chain,
-                        center: center3D,
-                        radius: circleFit.radius,
-                        normal: plane.normal,
-                        error: circleFit.rmsError
-                    };
-                }
-                
-                // Otherwise it's an arc
-                return {
-                    type: 'arc',
-                    points: chain,
-                    center: center3D,
-                    radius: circleFit.radius,
-                    startAngle: angles.startAngle,
-                    endAngle: angles.endAngle,
-                    sweep: angles.sweep,
-                    normal: plane.normal,
-                    closed,
-                    error: circleFit.rmsError
-                };
-            }
-            
-            // Main Partcraft detection
-            function detectEdgesPartcraft(geometry) {
-                // Step 1: Get raw edges from Three.js
-                const rawEdges = getEdgesFromThreeJS(geometry);
-                console.log(`Raw edges from Three.js: ${rawEdges.length}`);
-                
-                // Step 2: Chain edges together
-                const chains = chainEdges(rawEdges);
-                console.log(`Chains formed: ${chains.length}`);
-                
-                // Step 3: Classify each chain
-                const classified = [];
-                const counts = { line: 0, arc: 0, circle: 0, ellipse: 0, polyline: 0 };
-                const curveDetails = [];
-                
-                for (let i = 0; i < chains.length; i++) {
-                    const result = classifyCurve(chains[i]);
-                    counts[result.type]++;
-                    
-                    // Build detail info
-                    let detail = `#${i}: ${result.type.toUpperCase()}`;
-                    if (result.type === 'line') {
-                        detail += ` len=${result.length.toFixed(3)}"`;
-                    } else if (result.type === 'arc') {
-                        detail += ` R=${result.radius.toFixed(3)}" sweep=${result.sweep.toFixed(1)}°`;
-                    } else if (result.type === 'circle') {
-                        detail += ` R=${result.radius.toFixed(3)}"`;
-                    } else if (result.type === 'ellipse') {
-                        detail += ` Rx=${result.radiusX.toFixed(3)}" Ry=${result.radiusY.toFixed(3)}"`;
-                    } else if (result.type === 'polyline') {
-                        detail += ` (${result.reason || 'complex'})`;
-                    }
-                    
-                    curveDetails.push({
-                        index: i,
-                        type: result.type,
-                        detail,
-                        ...result
-                    });
-                    
-                    console.log(`Chain ${i}: ${detail}`);
-                    
-                    // Convert to edge segments for rendering
-                    for (let j = 0; j < result.points.length - 1; j++) {
-                        classified.push({
-                            start: result.points[j],
-                            end: result.points[j + 1],
-                            type: result.type
-                        });
-                    }
-                }
-                
-                return {
-                    edges: classified,
-                    chains: chains.length,
-                    counts,
-                    curveDetails
-                };
-            }
-            
-            // Three.js simple detection (no classification)
-            function detectEdgesThreeJS(geometry) {
-                const edges = getEdgesFromThreeJS(geometry);
-                return {
-                    edges: edges.map(e => ({ ...e, type: 'unknown' })),
-                    counts: { unknown: edges.length }
-                };
-            }
-            
-            function buildEdgeVisualization(edges, colored) {
-                const group = new THREE.Group();
-                
-                if (colored) {
-                    // Group edges by type
-                    const byType = {};
-                    for (const edge of edges) {
-                        const type = edge.type || 'unknown';
-                        if (!byType[type]) byType[type] = [];
-                        byType[type].push(edge);
-                    }
-                    
-                    // Create line segments for each type
-                    for (const [type, typeEdges] of Object.entries(byType)) {
-                        const positions = [];
-                        for (const edge of typeEdges) {
-                            positions.push(edge.start.x, edge.start.y, edge.start.z);
-                            positions.push(edge.end.x, edge.end.y, edge.end.z);
-                        }
-                        
-                        if (positions.length > 0) {
-                            const geom = new THREE.BufferGeometry();
-                            geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-                            const color = CURVE_COLORS[type] || CURVE_COLORS.unknown;
-                            group.add(new THREE.LineSegments(geom, new THREE.LineBasicMaterial({ color })));
-                        }
-                    }
-                } else {
+                for (const [type, typeEdges] of Object.entries(byType)) {
                     const positions = [];
-                    for (const edge of edges) {
+                    for (const edge of typeEdges) {
                         positions.push(edge.start.x, edge.start.y, edge.start.z);
                         positions.push(edge.end.x, edge.end.y, edge.end.z);
                     }
-                    const geom = new THREE.BufferGeometry();
-                    geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-                    group.add(new THREE.LineSegments(geom, new THREE.LineBasicMaterial({ color: 0x000000 })));
-                }
-                
-                return group;
-            }
-            
-            function updateEdgeDisplay() {
-                if (!currentGroup || !analysisResults) return;
-                
-                if (edgeObjects.current) {
-                    currentGroup.remove(edgeObjects.current);
-                }
-                
-                const edges = edgeMode === 'threejs' 
-                    ? analysisResults.threejs.edges 
-                    : analysisResults.partcraft.edges;
-                
-                edgeObjects.current = buildEdgeVisualization(edges, colorMode === 'classified');
-                currentGroup.add(edgeObjects.current);
-                
-                updateStatsDisplay();
-                colorLegend.style.display = colorMode === 'classified' ? 'flex' : 'none';
-            }
-            
-            function updateFaceDisplay() {
-                if (!currentGroup || !meshObjects.solid || !meshObjects.random) return;
-                meshObjects.solid.visible = (faceMode === 'solid');
-                meshObjects.random.visible = (faceMode === 'random');
-                updateStatsDisplay();
-            }
-            
-            function updateStatsDisplay() {
-                const threejs = analysisResults.threejs;
-                const partcraft = analysisResults.partcraft;
-                
-                // Build curve details HTML
-                let curveDetailsHtml = '';
-                if (partcraft.curveDetails && partcraft.curveDetails.length > 0) {
-                    curveDetailsHtml = '<div class="curve-details">';
-                    for (const curve of partcraft.curveDetails) {
-                        curveDetailsHtml += `<div class="curve-detail-item">
-                            <span class="curve-type-badge ${curve.type}">${curve.type}</span>
-                            ${curve.detail}
-                        </div>`;
+                    if (positions.length > 0) {
+                        const geom = new THREE.BufferGeometry();
+                        geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                        group.add(new THREE.LineSegments(geom, new THREE.LineBasicMaterial({ color: CURVE_COLORS[type] || 0 })));
                     }
-                    curveDetailsHtml += '</div>';
                 }
-                
-                let facesHtml = '';
-                if (faceMode === 'random' && faceColors.length > 0) {
-                    facesHtml = '<div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #3a3a5a;"><h4 style="color: #6c63ff; margin-bottom: 10px;">B-Rep Faces</h4>';
-                    for (let i = 0; i < faceColors.length; i++) {
-                        const hex = hslToHex(faceColors[i].h, faceColors[i].s, faceColors[i].l);
-                        facesHtml += `<div class="edge-stat"><span><span class="face-color-box" style="background: ${hex};"></span>Face ${i}</span><span>${faceColors[i].triangles} tris</span></div>`;
-                    }
-                    facesHtml += '</div>';
+            } else {
+                const positions = [];
+                for (const edge of edges) {
+                    positions.push(edge.start.x, edge.start.y, edge.start.z);
+                    positions.push(edge.end.x, edge.end.y, edge.end.z);
                 }
-                
-                const counts = partcraft.counts;
-                
-                edgeStatsEl.innerHTML = `
-                    <div style="margin-bottom: 15px;">
-                        <h4 style="color: #6c63ff; margin-bottom: 10px;">Three.js Detection</h4>
-                        <div class="edge-stat"><span>Total Edges:</span><span>${threejs.edges.length}</span></div>
-                    </div>
-                    <div style="margin-bottom: 15px;">
-                        <h4 style="color: #6c63ff; margin-bottom: 10px;">Partcraft Classification</h4>
-                        <div class="edge-stat"><span>Edge Chains:</span><span>${partcraft.chains}</span></div>
-                        <div class="edge-stat"><span style="color: #00ff88;">Lines:</span><span>${counts.line || 0}</span></div>
-                        <div class="edge-stat"><span style="color: #ff69b4;">Arcs:</span><span>${counts.arc || 0}</span></div>
-                        <div class="edge-stat"><span style="color: #00bfff;">Circles:</span><span>${counts.circle || 0}</span></div>
-                        <div class="edge-stat"><span style="color: #ffa500;">Ellipses:</span><span>${counts.ellipse || 0}</span></div>
-                        <div class="edge-stat"><span style="color: #888;">Polylines:</span><span>${counts.polyline || 0}</span></div>
-                        <div class="edge-stat"><span>Total Segments:</span><span>${partcraft.edges.length}</span></div>
-                        ${curveDetailsHtml}
-                    </div>
-                    <div style="border-top: 1px solid #3a3a5a; padding-top: 15px;">
-                        <h4 style="color: #6c63ff; margin-bottom: 10px;">Geometry</h4>
-                        <div class="edge-stat"><span>Vertices:</span><span>${analysisResults.vertices}</span></div>
-                        <div class="edge-stat"><span>Triangles:</span><span>${analysisResults.triangles}</span></div>
-                        <div class="edge-stat"><span>B-Rep Faces:</span><span>${analysisResults.brepFaces}</span></div>
-                    </div>
-                    ${facesHtml}
-                `;
+                const geom = new THREE.BufferGeometry();
+                geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                group.add(new THREE.LineSegments(geom, new THREE.LineBasicMaterial({ color: 0x000000 })));
             }
+            return group;
+        }
 
-            // Initialize OCCT
+        function updateEdgeDisplay() {
+            if (!currentGroup || !analysisResults) return;
+            if (edgeObjects.current) currentGroup.remove(edgeObjects.current);
+            const edges = edgeMode === 'threejs' ? analysisResults.threejs.edges : analysisResults.partcraft.edges;
+            edgeObjects.current = buildEdgeVisualization(edges, colorMode === 'classified');
+            currentGroup.add(edgeObjects.current);
+            updateStatsDisplay();
+            colorLegend.style.display = colorMode === 'classified' ? 'flex' : 'none';
+        }
+
+        function updateFaceDisplay() {
+            if (!currentGroup || !meshObjects.solid || !meshObjects.random) return;
+            meshObjects.solid.visible = (faceMode === 'solid');
+            meshObjects.random.visible = (faceMode === 'random');
+            updateStatsDisplay();
+        }
+
+        function updateStatsDisplay() {
+            const threejs = analysisResults.threejs;
+            const partcraft = analysisResults.partcraft;
+            const counts = partcraft.counts;
+            
+            let curveDetailsHtml = '';
+            if (partcraft.curveDetails && partcraft.curveDetails.length > 0) {
+                curveDetailsHtml = '<div class="curve-details">';
+                for (const curve of partcraft.curveDetails) {
+                    curveDetailsHtml += `<div class="curve-detail-item"><span class="curve-type-badge ${curve.type}">${curve.type}</span>${curve.detail}</div>`;
+                }
+                curveDetailsHtml += '</div>';
+            }
+            
+            let facesHtml = '';
+            if (faceMode === 'random' && faceColors.length > 0) {
+                facesHtml = '<div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #3a3a5a;"><h4 style="color: #6c63ff; margin-bottom: 10px;">B-Rep Faces</h4>';
+                for (let i = 0; i < faceColors.length; i++) {
+                    const hex = hslToHex(faceColors[i].h, faceColors[i].s, faceColors[i].l);
+                    facesHtml += `<div class="edge-stat"><span><span class="face-color-box" style="background: ${hex};"></span>Face ${i}</span><span>${faceColors[i].triangles} tris</span></div>`;
+                }
+                facesHtml += '</div>';
+            }
+            
+            edgeStatsEl.innerHTML = `
+                <div style="margin-bottom: 15px;">
+                    <h4 style="color: #6c63ff; margin-bottom: 10px;">Three.js Detection</h4>
+                    <div class="edge-stat"><span>Total Edges:</span><span>${threejs.edges.length}</span></div>
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <h4 style="color: #6c63ff; margin-bottom: 10px;">Partcraft Classification</h4>
+                    <div class="edge-stat"><span>Edge Chains:</span><span>${partcraft.chains}</span></div>
+                    <div class="edge-stat"><span style="color: #00ff88;">Lines:</span><span>${counts.line || 0}</span></div>
+                    <div class="edge-stat"><span style="color: #ff69b4;">Arcs:</span><span>${counts.arc || 0}</span></div>
+                    <div class="edge-stat"><span style="color: #00bfff;">Circles:</span><span>${counts.circle || 0}</span></div>
+                    <div class="edge-stat"><span style="color: #888;">Polylines:</span><span>${counts.polyline || 0}</span></div>
+                    ${curveDetailsHtml}
+                </div>
+                <div style="border-top: 1px solid #3a3a5a; padding-top: 15px;">
+                    <h4 style="color: #6c63ff; margin-bottom: 10px;">Geometry</h4>
+                    <div class="edge-stat"><span>Vertices:</span><span>${analysisResults.vertices}</span></div>
+                    <div class="edge-stat"><span>Triangles:</span><span>${analysisResults.triangles}</span></div>
+                    <div class="edge-stat"><span>B-Rep Faces:</span><span>${analysisResults.brepFaces}</span></div>
+                </div>
+                ${facesHtml}
+            `;
+        }
+
+        // Initialize
+        try {
+            log('Loading STEP parser...');
+            occt = await occtimportjs({ locateFile: (name) => 'https://cdn.jsdelivr.net/npm/occt-import-js@0.0.23/dist/' + name });
+            log('Ready! Upload a STEP file to analyze.');
+            uploadArea.classList.remove('disabled');
+        } catch (err) { log('Failed: ' + err.message); console.error(err); }
+
+        // Events
+        uploadArea.addEventListener('click', () => { if (!uploadArea.classList.contains('disabled')) fileInput.click(); });
+        uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+        uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+        uploadArea.addEventListener('drop', (e) => { e.preventDefault(); uploadArea.classList.remove('dragover'); if (e.dataTransfer.files.length) processFile(e.dataTransfer.files[0]); });
+        fileInput.addEventListener('change', (e) => { if (e.target.files.length) processFile(e.target.files[0]); });
+        
+        newFileBtn.addEventListener('click', () => {
+            resultsEl.classList.remove('show'); uploadArea.classList.remove('hidden');
+            if (currentGroup) { scene.remove(currentGroup); currentGroup = null; }
+            fileInput.value = ''; faceColors = [];
+        });
+        
+        document.getElementById('btn-threejs').addEventListener('click', function() { edgeMode = 'threejs'; this.classList.add('active'); document.getElementById('btn-partcraft').classList.remove('active'); updateEdgeDisplay(); });
+        document.getElementById('btn-partcraft').addEventListener('click', function() { edgeMode = 'partcraft'; this.classList.add('active'); document.getElementById('btn-threejs').classList.remove('active'); updateEdgeDisplay(); });
+        document.getElementById('btn-black').addEventListener('click', function() { colorMode = 'black'; this.classList.add('active'); document.getElementById('btn-classified').classList.remove('active'); updateEdgeDisplay(); });
+        document.getElementById('btn-classified').addEventListener('click', function() { colorMode = 'classified'; this.classList.add('active'); document.getElementById('btn-black').classList.remove('active'); updateEdgeDisplay(); });
+        document.getElementById('btn-solid').addEventListener('click', function() { faceMode = 'solid'; this.classList.add('active'); document.getElementById('btn-random').classList.remove('active'); updateFaceDisplay(); });
+        document.getElementById('btn-random').addEventListener('click', function() { faceMode = 'random'; this.classList.add('active'); document.getElementById('btn-solid').classList.remove('active'); updateFaceDisplay(); });
+
+        async function processFile(file) {
+            log('Reading: ' + file.name);
+            uploadArea.classList.add('hidden');
             try {
-                log('Loading STEP parser...');
-                occt = await occtimportjs({
-                    locateFile: (name) => 'https://cdn.jsdelivr.net/npm/occt-import-js@0.0.23/dist/' + name
-                });
-                log('Ready! Upload a STEP file to analyze.');
-                uploadArea.classList.remove('disabled');
-            } catch (err) {
-                log('Failed to load: ' + err.message);
-                console.error(err);
-            }
-
-            // Event handlers
-            uploadArea.addEventListener('click', () => {
-                if (!uploadArea.classList.contains('disabled')) fileInput.click();
-            });
-            uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.classList.add('dragover'); });
-            uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
-            uploadArea.addEventListener('drop', (e) => {
-                e.preventDefault();
-                uploadArea.classList.remove('dragover');
-                if (e.dataTransfer.files.length) processFile(e.dataTransfer.files[0]);
-            });
-            fileInput.addEventListener('change', (e) => {
-                if (e.target.files.length) processFile(e.target.files[0]);
-            });
-            
-            newFileBtn.addEventListener('click', () => {
-                resultsEl.classList.remove('show');
-                uploadArea.classList.remove('hidden');
-                if (currentGroup) { scene.remove(currentGroup); currentGroup = null; }
-                fileInput.value = '';
+                const buffer = await file.arrayBuffer();
+                log('Parsing STEP...');
+                const result = occt.ReadStepFile(new Uint8Array(buffer), { linearUnit: 'inch' });
+                if (!result.success) throw new Error('Parse failed');
+                
+                let partName = file.name.replace(/\.(stp|step)$/i, '');
+                if (result.meshes[0]?.name) partName = result.meshes[0].name;
+                
+                log('Building geometry...');
+                if (!scene) initThreeJS();
+                if (currentGroup) scene.remove(currentGroup);
+                
+                currentGroup = new THREE.Group();
+                let totalVertices = 0, totalTriangles = 0, brepFaces = 0;
                 faceColors = [];
-            });
-            
-            document.getElementById('btn-threejs').addEventListener('click', function() {
-                edgeMode = 'threejs';
-                this.classList.add('active');
-                document.getElementById('btn-partcraft').classList.remove('active');
-                updateEdgeDisplay();
-            });
-            
-            document.getElementById('btn-partcraft').addEventListener('click', function() {
-                edgeMode = 'partcraft';
-                this.classList.add('active');
-                document.getElementById('btn-threejs').classList.remove('active');
-                updateEdgeDisplay();
-            });
-            
-            document.getElementById('btn-black').addEventListener('click', function() {
-                colorMode = 'black';
-                this.classList.add('active');
-                document.getElementById('btn-classified').classList.remove('active');
-                updateEdgeDisplay();
-            });
-            
-            document.getElementById('btn-classified').addEventListener('click', function() {
-                colorMode = 'classified';
-                this.classList.add('active');
-                document.getElementById('btn-black').classList.remove('active');
-                updateEdgeDisplay();
-            });
-            
-            document.getElementById('btn-solid').addEventListener('click', function() {
-                faceMode = 'solid';
-                this.classList.add('active');
-                document.getElementById('btn-random').classList.remove('active');
-                updateFaceDisplay();
-            });
-            
-            document.getElementById('btn-random').addEventListener('click', function() {
-                faceMode = 'random';
-                this.classList.add('active');
-                document.getElementById('btn-solid').classList.remove('active');
-                updateFaceDisplay();
-            });
-
-            async function processFile(file) {
-                log('Reading: ' + file.name);
-                uploadArea.classList.add('hidden');
-
-                try {
-                    const buffer = await file.arrayBuffer();
-                    const fileBuffer = new Uint8Array(buffer);
-
-                    log('Parsing STEP file...');
-                    const result = occt.ReadStepFile(fileBuffer, { linearUnit: 'inch' });
+                let minX = Infinity, minY = Infinity, minZ = Infinity;
+                let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+                
+                for (const meshData of result.meshes) {
+                    const geometry = new THREE.BufferGeometry();
+                    const positions = toFloat32Array(meshData.attributes.position.array);
+                    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
                     
-                    if (!result.success) throw new Error('Failed to parse STEP file');
-                    console.log('STEP Result:', result);
-                    
-                    let partName = file.name.replace(/\.(stp|step)$/i, '');
-                    if (result.meshes[0]?.name) partName = result.meshes[0].name;
-                    
-                    log('Building 3D geometry...');
-                    if (!scene) initThreeJS();
-                    if (currentGroup) scene.remove(currentGroup);
-                    
-                    currentGroup = new THREE.Group();
-                    let totalVertices = 0, totalTriangles = 0, brepFaces = 0;
-                    faceColors = [];
-                    
-                    let minX = Infinity, minY = Infinity, minZ = Infinity;
-                    let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
-                    
-                    for (const meshData of result.meshes) {
-                        const geometry = new THREE.BufferGeometry();
-                        const positions = toFloat32Array(meshData.attributes.position.array);
-                        geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-                        
-                        for (let i = 0; i < positions.length; i += 3) {
-                            minX = Math.min(minX, positions[i]);
-                            maxX = Math.max(maxX, positions[i]);
-                            minY = Math.min(minY, positions[i + 1]);
-                            maxY = Math.max(maxY, positions[i + 1]);
-                            minZ = Math.min(minZ, positions[i + 2]);
-                            maxZ = Math.max(maxZ, positions[i + 2]);
-                        }
-                        
-                        if (meshData.attributes.normal?.array) {
-                            geometry.setAttribute('normal', new THREE.Float32BufferAttribute(toFloat32Array(meshData.attributes.normal.array), 3));
-                        } else {
-                            geometry.computeVertexNormals();
-                        }
-                        
-                        let indices = null;
-                        if (meshData.index?.array) {
-                            indices = toUint32Array(meshData.index.array);
-                            geometry.setIndex(new THREE.Uint32BufferAttribute(indices, 1));
-                        }
-                        
-                        totalVertices += positions.length / 3;
-                        totalTriangles += indices ? indices.length / 3 : positions.length / 9;
-                        brepFaces += meshData.brep_faces?.length || 0;
-                        
-                        // Solid mesh
-                        const solidMaterial = new THREE.MeshPhongMaterial({
-                            color: meshData.color ? new THREE.Color(...meshData.color) : 0x6c63ff,
-                            side: THREE.DoubleSide
-                        });
-                        meshObjects.solid = new THREE.Mesh(geometry, solidMaterial);
-                        currentGroup.add(meshObjects.solid);
-                        
-                        // Random colored mesh
-                        if (meshData.brep_faces?.length > 0) {
-                            const randomGeometry = geometry.clone();
-                            const colors = generateDistinctColors(meshData.brep_faces.length);
-                            const materials = [];
-                            randomGeometry.clearGroups();
-                            
-                            for (let i = 0; i < meshData.brep_faces.length; i++) {
-                                const face = meshData.brep_faces[i];
-                                const hex = hslToHex(colors[i].h, colors[i].s, colors[i].l);
-                                materials.push(new THREE.MeshPhongMaterial({ color: new THREE.Color(hex), side: THREE.DoubleSide }));
-                                randomGeometry.addGroup(face.first * 3, (face.last - face.first + 1) * 3, i);
-                                faceColors.push({ ...colors[i], triangles: face.last - face.first + 1 });
-                            }
-                            
-                            meshObjects.random = new THREE.Mesh(randomGeometry, materials);
-                            meshObjects.random.visible = false;
-                            currentGroup.add(meshObjects.random);
-                        }
-                        
-                        // Edge detection
-                        log('Classifying curves...');
-                        analysisResults = {
-                            threejs: detectEdgesThreeJS(geometry),
-                            partcraft: detectEdgesPartcraft(geometry),
-                            vertices: totalVertices,
-                            triangles: totalTriangles,
-                            brepFaces: brepFaces
-                        };
+                    for (let i = 0; i < positions.length; i += 3) {
+                        minX = Math.min(minX, positions[i]); maxX = Math.max(maxX, positions[i]);
+                        minY = Math.min(minY, positions[i+1]); maxY = Math.max(maxY, positions[i+1]);
+                        minZ = Math.min(minZ, positions[i+2]); maxZ = Math.max(maxZ, positions[i+2]);
                     }
                     
-                    scene.add(currentGroup);
-                    updateEdgeDisplay();
-                    updateFaceDisplay();
-                    fitCameraToObject(currentGroup);
+                    if (meshData.attributes.normal?.array) {
+                        geometry.setAttribute('normal', new THREE.Float32BufferAttribute(toFloat32Array(meshData.attributes.normal.array), 3));
+                    } else { geometry.computeVertexNormals(); }
                     
-                    document.getElementById('part-name').textContent = partName;
-                    document.getElementById('dim-x').textContent = (maxX - minX).toFixed(3);
-                    document.getElementById('dim-y').textContent = (maxY - minY).toFixed(3);
-                    document.getElementById('dim-z').textContent = (maxZ - minZ).toFixed(3);
+                    let indices = null;
+                    if (meshData.index?.array) {
+                        indices = toUint32Array(meshData.index.array);
+                        geometry.setIndex(new THREE.Uint32BufferAttribute(indices, 1));
+                    }
                     
-                    resultsEl.classList.add('show');
-                    log('✓ Classification complete! Check console for curve details.');
-
-                } catch (err) {
-                    log('Error: ' + err.message);
-                    console.error(err);
-                    uploadArea.classList.remove('hidden');
+                    totalVertices += positions.length / 3;
+                    totalTriangles += indices ? indices.length / 3 : positions.length / 9;
+                    brepFaces += meshData.brep_faces?.length || 0;
+                    
+                    const solidMaterial = new THREE.MeshPhongMaterial({ color: meshData.color ? new THREE.Color(...meshData.color) : 0x6c63ff, side: THREE.DoubleSide });
+                    meshObjects.solid = new THREE.Mesh(geometry, solidMaterial);
+                    currentGroup.add(meshObjects.solid);
+                    
+                    if (meshData.brep_faces?.length > 0) {
+                        const randomGeometry = geometry.clone();
+                        const colors = generateDistinctColors(meshData.brep_faces.length);
+                        const materials = [];
+                        randomGeometry.clearGroups();
+                        for (let i = 0; i < meshData.brep_faces.length; i++) {
+                            const face = meshData.brep_faces[i];
+                            const hex = hslToHex(colors[i].h, colors[i].s, colors[i].l);
+                            materials.push(new THREE.MeshPhongMaterial({ color: new THREE.Color(hex), side: THREE.DoubleSide }));
+                            randomGeometry.addGroup(face.first * 3, (face.last - face.first + 1) * 3, i);
+                            faceColors.push({ ...colors[i], triangles: face.last - face.first + 1 });
+                        }
+                        meshObjects.random = new THREE.Mesh(randomGeometry, materials);
+                        meshObjects.random.visible = false;
+                        currentGroup.add(meshObjects.random);
+                    }
+                    
+                    log('Classifying curves...');
+                    analysisResults = {
+                        threejs: detectEdgesThreeJS(geometry),
+                        partcraft: detectEdgesPartcraft(geometry),
+                        vertices: totalVertices, triangles: totalTriangles, brepFaces
+                    };
                 }
+                
+                scene.add(currentGroup);
+                updateEdgeDisplay();
+                updateFaceDisplay();
+                fitCameraToObject(currentGroup);
+                
+                document.getElementById('part-name').textContent = partName;
+                document.getElementById('dim-x').textContent = (maxX - minX).toFixed(3);
+                document.getElementById('dim-y').textContent = (maxY - minY).toFixed(3);
+                document.getElementById('dim-z').textContent = (maxZ - minZ).toFixed(3);
+                
+                resultsEl.classList.add('show');
+                log('✓ Complete! Check console for details.');
+            } catch (err) { log('Error: ' + err.message); console.error(err); uploadArea.classList.remove('hidden'); }
+        }
+        
+        window.addEventListener('resize', () => {
+            if (renderer && camera) {
+                const w = viewerEl.clientWidth, h = viewerEl.clientHeight;
+                camera.aspect = w / h; camera.updateProjectionMatrix(); renderer.setSize(w, h);
             }
-            
-            window.addEventListener('resize', () => {
-                if (renderer && camera) {
-                    const width = viewerEl.clientWidth;
-                    const height = viewerEl.clientHeight;
-                    camera.aspect = width / height;
-                    camera.updateProjectionMatrix();
-                    renderer.setSize(width, height);
-                }
-            });
-        })();
+        });
+    })();
     </script>
 </body>
 </html>
