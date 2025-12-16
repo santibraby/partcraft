@@ -107,6 +107,7 @@
             padding: 15px;
             background: #2a2a4a;
             border-radius: 8px;
+            align-items: center;
         }
         
         .info-item {
@@ -124,6 +125,85 @@
         .info-item .value {
             font-size: 18px;
             font-weight: 600;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #2a2a4a;
+            border-radius: 8px;
+            align-items: flex-end;
+        }
+        
+        .toggle-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .toggle-group label {
+            font-size: 10px;
+            text-transform: uppercase;
+            color: #888;
+            letter-spacing: 1px;
+        }
+        
+        .toggle-buttons {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .toggle-btn {
+            padding: 8px 12px;
+            border: 1px solid #4a4a6a;
+            background: transparent;
+            color: #888;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+        
+        .toggle-btn.active {
+            background: #6c63ff;
+            border-color: #6c63ff;
+            color: white;
+        }
+        
+        .toggle-btn:hover:not(.active) {
+            border-color: #6c63ff;
+            color: #fff;
+        }
+        
+        .color-legend {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            margin-left: auto;
+            font-size: 12px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 3px;
+            border-radius: 2px;
+        }
+        
+        .legend-color.line {
+            background: #00ff88;
+        }
+        
+        .legend-color.arc {
+            background: #ff69b4;
         }
         
         .viewer-container {
@@ -165,6 +245,15 @@
             justify-content: space-between;
             padding: 5px 0;
             border-bottom: 1px solid #3a3a5a;
+        }
+        
+        .face-color-box {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+            margin-right: 5px;
+            vertical-align: middle;
         }
         
         .new-file-btn {
@@ -219,6 +308,43 @@
                 </div>
             </div>
             
+            <div class="controls">
+                <div class="toggle-group">
+                    <label>Edge Detection</label>
+                    <div class="toggle-buttons">
+                        <button class="toggle-btn active" id="btn-threejs">Three.js</button>
+                        <button class="toggle-btn" id="btn-partcraft">Partcraft</button>
+                    </div>
+                </div>
+                
+                <div class="toggle-group">
+                    <label>Edge Colors</label>
+                    <div class="toggle-buttons">
+                        <button class="toggle-btn active" id="btn-black">Black</button>
+                        <button class="toggle-btn" id="btn-classified">Classified</button>
+                    </div>
+                </div>
+                
+                <div class="toggle-group">
+                    <label>Face Colors</label>
+                    <div class="toggle-buttons">
+                        <button class="toggle-btn active" id="btn-solid">Solid</button>
+                        <button class="toggle-btn" id="btn-random">Random</button>
+                    </div>
+                </div>
+                
+                <div class="color-legend" id="color-legend" style="display: none;">
+                    <div class="legend-item">
+                        <div class="legend-color line"></div>
+                        <span>Lines</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color arc"></div>
+                        <span>Arcs</span>
+                    </div>
+                </div>
+            </div>
+            
             <div class="viewer-container">
                 <div class="viewer-3d" id="viewer-3d"></div>
                 <div class="edge-info" id="edge-info">
@@ -229,7 +355,7 @@
         </div>
     </div>
     
-    <div class="version">v0.0.10</div>
+    <div class="version">v0.0.12</div>
 
     <script src="https://cdn.jsdelivr.net/npm/occt-import-js@0.0.23/dist/occt-import-js.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -243,16 +369,25 @@
             const viewerEl = document.getElementById('viewer-3d');
             const edgeStatsEl = document.getElementById('edge-stats');
             const newFileBtn = document.getElementById('new-file-btn');
+            const colorLegend = document.getElementById('color-legend');
 
             let occt = null;
             let scene, camera, renderer, controls;
-            let currentMesh = null;
+            let currentGroup = null;
+            let meshObjects = { solid: null, random: null };
+            let edgeObjects = { current: null };
+            let analysisResults = null;
+            let faceColors = []; // Store generated colors for display
+            
+            // Settings
+            let edgeMode = 'threejs';
+            let colorMode = 'black';
+            let faceMode = 'solid';
 
             function log(msg) {
                 statusEl.textContent = msg;
             }
             
-            // Helper to ensure we have a proper TypedArray
             function toFloat32Array(arr) {
                 if (arr instanceof Float32Array) return arr;
                 const result = new Float32Array(arr.length);
@@ -270,8 +405,32 @@
                 }
                 return result;
             }
+            
+            // Generate distinct colors for faces
+            function generateDistinctColors(count) {
+                const colors = [];
+                for (let i = 0; i < count; i++) {
+                    // Use HSL for better distribution
+                    const hue = (i * 137.508) % 360; // Golden angle approximation
+                    const saturation = 70 + (i % 3) * 10;
+                    const lightness = 50 + (i % 2) * 15;
+                    colors.push({ h: hue, s: saturation, l: lightness });
+                }
+                return colors;
+            }
+            
+            function hslToHex(h, s, l) {
+                s /= 100;
+                l /= 100;
+                const a = s * Math.min(l, 1 - l);
+                const f = n => {
+                    const k = (n + h / 30) % 12;
+                    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+                    return Math.round(255 * color).toString(16).padStart(2, '0');
+                };
+                return `#${f(0)}${f(8)}${f(4)}`;
+            }
 
-            // Initialize Three.js
             function initThreeJS() {
                 scene = new THREE.Scene();
                 scene.background = new THREE.Color(0x1a1a2e);
@@ -290,7 +449,6 @@
                 controls = new THREE.OrbitControls(camera, renderer.domElement);
                 controls.enableDamping = true;
                 
-                // Lights
                 const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
                 scene.add(ambientLight);
                 
@@ -327,6 +485,305 @@
                 controls.update();
             }
 
+            // Three.js edge detection
+            function detectEdgesThreeJS(geometry) {
+                const edgesGeometry = new THREE.EdgesGeometry(geometry, 30);
+                const positions = edgesGeometry.attributes.position.array;
+                
+                const edges = [];
+                for (let i = 0; i < positions.length; i += 6) {
+                    edges.push({
+                        start: new THREE.Vector3(positions[i], positions[i+1], positions[i+2]),
+                        end: new THREE.Vector3(positions[i+3], positions[i+4], positions[i+5]),
+                        type: 'unknown'
+                    });
+                }
+                
+                return { edges, geometry: edgesGeometry };
+            }
+            
+            // Partcraft edge detection with classification
+            function detectEdgesPartcraft(geometry) {
+                const edgesGeometry = new THREE.EdgesGeometry(geometry, 30);
+                const positions = edgesGeometry.attributes.position.array;
+                
+                const rawEdges = [];
+                for (let i = 0; i < positions.length; i += 6) {
+                    rawEdges.push({
+                        start: new THREE.Vector3(positions[i], positions[i+1], positions[i+2]),
+                        end: new THREE.Vector3(positions[i+3], positions[i+4], positions[i+5]),
+                        used: false
+                    });
+                }
+                
+                const chains = [];
+                const tolerance = 0.001;
+                
+                function pointsMatch(p1, p2) {
+                    return p1.distanceTo(p2) < tolerance;
+                }
+                
+                function findConnectedEdge(point, excludeIndices) {
+                    for (let i = 0; i < rawEdges.length; i++) {
+                        if (rawEdges[i].used || excludeIndices.has(i)) continue;
+                        if (pointsMatch(rawEdges[i].start, point)) {
+                            return { index: i, startPoint: true };
+                        }
+                        if (pointsMatch(rawEdges[i].end, point)) {
+                            return { index: i, startPoint: false };
+                        }
+                    }
+                    return null;
+                }
+                
+                for (let i = 0; i < rawEdges.length; i++) {
+                    if (rawEdges[i].used) continue;
+                    
+                    const chain = [];
+                    const usedInChain = new Set();
+                    
+                    chain.push(rawEdges[i].start.clone());
+                    chain.push(rawEdges[i].end.clone());
+                    rawEdges[i].used = true;
+                    usedInChain.add(i);
+                    
+                    let currentPoint = rawEdges[i].end;
+                    let found = true;
+                    while (found) {
+                        const next = findConnectedEdge(currentPoint, usedInChain);
+                        if (next) {
+                            rawEdges[next.index].used = true;
+                            usedInChain.add(next.index);
+                            if (next.startPoint) {
+                                chain.push(rawEdges[next.index].end.clone());
+                                currentPoint = rawEdges[next.index].end;
+                            } else {
+                                chain.push(rawEdges[next.index].start.clone());
+                                currentPoint = rawEdges[next.index].start;
+                            }
+                        } else {
+                            found = false;
+                        }
+                    }
+                    
+                    currentPoint = rawEdges[i].start;
+                    found = true;
+                    while (found) {
+                        const next = findConnectedEdge(currentPoint, usedInChain);
+                        if (next) {
+                            rawEdges[next.index].used = true;
+                            usedInChain.add(next.index);
+                            if (next.startPoint) {
+                                chain.unshift(rawEdges[next.index].end.clone());
+                                currentPoint = rawEdges[next.index].end;
+                            } else {
+                                chain.unshift(rawEdges[next.index].start.clone());
+                                currentPoint = rawEdges[next.index].start;
+                            }
+                        } else {
+                            found = false;
+                        }
+                    }
+                    
+                    chains.push(chain);
+                }
+                
+                function classifyChain(chain) {
+                    if (chain.length <= 2) return 'line';
+                    
+                    const start = chain[0];
+                    const end = chain[chain.length - 1];
+                    const lineDir = end.clone().sub(start).normalize();
+                    
+                    let maxDeviation = 0;
+                    for (let i = 1; i < chain.length - 1; i++) {
+                        const toPoint = chain[i].clone().sub(start);
+                        const projected = lineDir.clone().multiplyScalar(toPoint.dot(lineDir));
+                        const deviation = toPoint.sub(projected).length();
+                        maxDeviation = Math.max(maxDeviation, deviation);
+                    }
+                    
+                    const chainLength = start.distanceTo(end);
+                    if (chainLength > 0 && maxDeviation < chainLength * 0.01) {
+                        return 'line';
+                    }
+                    
+                    if (chain.length >= 3) {
+                        const p1 = chain[0];
+                        const p2 = chain[Math.floor(chain.length / 2)];
+                        const p3 = chain[chain.length - 1];
+                        
+                        const v1 = p2.clone().sub(p1);
+                        const v2 = p3.clone().sub(p1);
+                        const normal = v1.clone().cross(v2).normalize();
+                        
+                        const xAxis = v1.clone().normalize();
+                        const yAxis = normal.clone().cross(xAxis).normalize();
+                        
+                        function projectTo2D(p) {
+                            const rel = p.clone().sub(p1);
+                            return { x: rel.dot(xAxis), y: rel.dot(yAxis) };
+                        }
+                        
+                        const pts2d = chain.map(projectTo2D);
+                        
+                        const a = pts2d[0];
+                        const b = pts2d[Math.floor(pts2d.length / 2)];
+                        const c = pts2d[pts2d.length - 1];
+                        
+                        const d = 2 * (a.x * (b.y - c.y) + b.x * (c.y - a.y) + c.x * (a.y - b.y));
+                        if (Math.abs(d) < 0.0001) return 'line';
+                        
+                        const ux = ((a.x*a.x + a.y*a.y) * (b.y - c.y) + (b.x*b.x + b.y*b.y) * (c.y - a.y) + (c.x*c.x + c.y*c.y) * (a.y - b.y)) / d;
+                        const uy = ((a.x*a.x + a.y*a.y) * (c.x - b.x) + (b.x*b.x + b.y*b.y) * (a.x - c.x) + (c.x*c.x + c.y*c.y) * (b.x - a.x)) / d;
+                        
+                        const radius = Math.sqrt((a.x - ux) ** 2 + (a.y - uy) ** 2);
+                        
+                        let maxError = 0;
+                        for (const pt of pts2d) {
+                            const dist = Math.sqrt((pt.x - ux) ** 2 + (pt.y - uy) ** 2);
+                            maxError = Math.max(maxError, Math.abs(dist - radius));
+                        }
+                        
+                        if (radius > 0 && maxError < radius * 0.02) {
+                            return 'arc';
+                        }
+                    }
+                    
+                    return 'line';
+                }
+                
+                const classifiedEdges = [];
+                let arcCount = 0;
+                let lineCount = 0;
+                
+                for (const chain of chains) {
+                    const type = classifyChain(chain);
+                    if (type === 'arc') arcCount++;
+                    else lineCount++;
+                    
+                    for (let i = 0; i < chain.length - 1; i++) {
+                        classifiedEdges.push({
+                            start: chain[i],
+                            end: chain[i + 1],
+                            type: type
+                        });
+                    }
+                }
+                
+                return { 
+                    edges: classifiedEdges, 
+                    chains: chains.length,
+                    arcs: arcCount,
+                    lines: lineCount
+                };
+            }
+            
+            function buildEdgeVisualization(edges, colored) {
+                const group = new THREE.Group();
+                
+                if (colored) {
+                    const linePositions = [];
+                    const arcPositions = [];
+                    
+                    for (const edge of edges) {
+                        const arr = edge.type === 'arc' ? arcPositions : linePositions;
+                        arr.push(edge.start.x, edge.start.y, edge.start.z);
+                        arr.push(edge.end.x, edge.end.y, edge.end.z);
+                    }
+                    
+                    if (linePositions.length > 0) {
+                        const lineGeom = new THREE.BufferGeometry();
+                        lineGeom.setAttribute('position', new THREE.Float32BufferAttribute(linePositions, 3));
+                        const lineMat = new THREE.LineBasicMaterial({ color: 0x00ff88, linewidth: 2 });
+                        group.add(new THREE.LineSegments(lineGeom, lineMat));
+                    }
+                    
+                    if (arcPositions.length > 0) {
+                        const arcGeom = new THREE.BufferGeometry();
+                        arcGeom.setAttribute('position', new THREE.Float32BufferAttribute(arcPositions, 3));
+                        const arcMat = new THREE.LineBasicMaterial({ color: 0xff69b4, linewidth: 2 });
+                        group.add(new THREE.LineSegments(arcGeom, arcMat));
+                    }
+                } else {
+                    const positions = [];
+                    for (const edge of edges) {
+                        positions.push(edge.start.x, edge.start.y, edge.start.z);
+                        positions.push(edge.end.x, edge.end.y, edge.end.z);
+                    }
+                    
+                    const geom = new THREE.BufferGeometry();
+                    geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                    const mat = new THREE.LineBasicMaterial({ color: 0x000000 });
+                    group.add(new THREE.LineSegments(geom, mat));
+                }
+                
+                return group;
+            }
+            
+            function updateEdgeDisplay() {
+                if (!currentGroup || !analysisResults) return;
+                
+                if (edgeObjects.current) {
+                    currentGroup.remove(edgeObjects.current);
+                }
+                
+                const edges = edgeMode === 'threejs' 
+                    ? analysisResults.threejs.edges 
+                    : analysisResults.partcraft.edges;
+                
+                edgeObjects.current = buildEdgeVisualization(edges, colorMode === 'classified');
+                currentGroup.add(edgeObjects.current);
+                
+                updateStatsDisplay();
+                colorLegend.style.display = colorMode === 'classified' ? 'flex' : 'none';
+            }
+            
+            function updateFaceDisplay() {
+                if (!currentGroup || !meshObjects.solid || !meshObjects.random) return;
+                
+                meshObjects.solid.visible = (faceMode === 'solid');
+                meshObjects.random.visible = (faceMode === 'random');
+                
+                updateStatsDisplay();
+            }
+            
+            function updateStatsDisplay() {
+                const threejs = analysisResults.threejs;
+                const partcraft = analysisResults.partcraft;
+                
+                let facesHtml = '';
+                if (faceMode === 'random' && faceColors.length > 0) {
+                    facesHtml = '<div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #3a3a5a;"><h4 style="color: #6c63ff; margin-bottom: 10px;">B-Rep Faces</h4>';
+                    for (let i = 0; i < faceColors.length; i++) {
+                        const hex = hslToHex(faceColors[i].h, faceColors[i].s, faceColors[i].l);
+                        facesHtml += `<div class="edge-stat"><span><span class="face-color-box" style="background: ${hex};"></span>Face ${i}</span><span>${faceColors[i].triangles} tris</span></div>`;
+                    }
+                    facesHtml += '</div>';
+                }
+                
+                edgeStatsEl.innerHTML = `
+                    <div style="margin-bottom: 15px;">
+                        <h4 style="color: #6c63ff; margin-bottom: 10px;">Three.js Detection</h4>
+                        <div class="edge-stat"><span>Total Edges:</span><span>${threejs.edges.length}</span></div>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <h4 style="color: #6c63ff; margin-bottom: 10px;">Partcraft Detection</h4>
+                        <div class="edge-stat"><span>Edge Chains:</span><span>${partcraft.chains}</span></div>
+                        <div class="edge-stat"><span style="color: #00ff88;">Lines:</span><span>${partcraft.lines}</span></div>
+                        <div class="edge-stat"><span style="color: #ff69b4;">Arcs:</span><span>${partcraft.arcs}</span></div>
+                        <div class="edge-stat"><span>Total Segments:</span><span>${partcraft.edges.length}</span></div>
+                    </div>
+                    <div style="border-top: 1px solid #3a3a5a; padding-top: 15px;">
+                        <h4 style="color: #6c63ff; margin-bottom: 10px;">Geometry</h4>
+                        <div class="edge-stat"><span>Vertices:</span><span>${analysisResults.vertices}</span></div>
+                        <div class="edge-stat"><span>Triangles:</span><span>${analysisResults.triangles}</span></div>
+                        <div class="edge-stat"><span>B-Rep Faces:</span><span>${analysisResults.brepFaces}</span></div>
+                    </div>
+                    ${facesHtml}
+                `;
+            }
+
             // Initialize OCCT
             try {
                 log('Loading STEP parser...');
@@ -342,7 +799,7 @@
                 console.error(err);
             }
 
-            // Upload handlers
+            // Event handlers
             uploadArea.addEventListener('click', () => {
                 if (!uploadArea.classList.contains('disabled')) {
                     fileInput.click();
@@ -375,69 +832,56 @@
             newFileBtn.addEventListener('click', () => {
                 resultsEl.classList.remove('show');
                 uploadArea.classList.remove('hidden');
-                if (currentMesh) {
-                    scene.remove(currentMesh);
-                    currentMesh = null;
+                if (currentGroup) {
+                    scene.remove(currentGroup);
+                    currentGroup = null;
                 }
                 fileInput.value = '';
+                faceColors = [];
             });
-
-            // Extract edges and analyze them
-            function analyzeEdges(geometry) {
-                // Use EdgesGeometry to find sharp edges (angle threshold in degrees)
-                const edgesGeometry = new THREE.EdgesGeometry(geometry, 30);
-                const edgePositions = edgesGeometry.attributes.position.array;
-                
-                // Each edge is 2 points (6 floats)
-                const edgeCount = edgePositions.length / 6;
-                
-                // Group connected edges into chains
-                const edges = [];
-                for (let i = 0; i < edgeCount; i++) {
-                    const idx = i * 6;
-                    edges.push({
-                        start: new THREE.Vector3(edgePositions[idx], edgePositions[idx + 1], edgePositions[idx + 2]),
-                        end: new THREE.Vector3(edgePositions[idx + 3], edgePositions[idx + 4], edgePositions[idx + 5]),
-                        length: 0
-                    });
-                    edges[i].length = edges[i].start.distanceTo(edges[i].end);
-                }
-                
-                // Classify edges by length consistency (arcs have many similar-length segments)
-                const lengthGroups = {};
-                const tolerance = 0.01; // 0.01 inch tolerance
-                
-                for (const edge of edges) {
-                    const roundedLength = Math.round(edge.length / tolerance) * tolerance;
-                    const key = roundedLength.toFixed(3);
-                    if (!lengthGroups[key]) {
-                        lengthGroups[key] = [];
-                    }
-                    lengthGroups[key].push(edge);
-                }
-                
-                // Find potential arcs (groups with many same-length edges)
-                let potentialArcEdges = 0;
-                let straightEdges = 0;
-                
-                for (const key in lengthGroups) {
-                    if (lengthGroups[key].length >= 3) {
-                        // Likely part of an arc (tessellated curve)
-                        potentialArcEdges += lengthGroups[key].length;
-                    } else {
-                        straightEdges += lengthGroups[key].length;
-                    }
-                }
-                
-                return {
-                    geometry: edgesGeometry,
-                    totalEdges: edgeCount,
-                    potentialArcEdges,
-                    straightEdges,
-                    lengthGroups: Object.keys(lengthGroups).length,
-                    edges
-                };
-            }
+            
+            // Toggle buttons
+            document.getElementById('btn-threejs').addEventListener('click', function() {
+                edgeMode = 'threejs';
+                this.classList.add('active');
+                document.getElementById('btn-partcraft').classList.remove('active');
+                updateEdgeDisplay();
+            });
+            
+            document.getElementById('btn-partcraft').addEventListener('click', function() {
+                edgeMode = 'partcraft';
+                this.classList.add('active');
+                document.getElementById('btn-threejs').classList.remove('active');
+                updateEdgeDisplay();
+            });
+            
+            document.getElementById('btn-black').addEventListener('click', function() {
+                colorMode = 'black';
+                this.classList.add('active');
+                document.getElementById('btn-classified').classList.remove('active');
+                updateEdgeDisplay();
+            });
+            
+            document.getElementById('btn-classified').addEventListener('click', function() {
+                colorMode = 'classified';
+                this.classList.add('active');
+                document.getElementById('btn-black').classList.remove('active');
+                updateEdgeDisplay();
+            });
+            
+            document.getElementById('btn-solid').addEventListener('click', function() {
+                faceMode = 'solid';
+                this.classList.add('active');
+                document.getElementById('btn-random').classList.remove('active');
+                updateFaceDisplay();
+            });
+            
+            document.getElementById('btn-random').addEventListener('click', function() {
+                faceMode = 'random';
+                this.classList.add('active');
+                document.getElementById('btn-solid').classList.remove('active');
+                updateFaceDisplay();
+            });
 
             async function processFile(file) {
                 log('Reading: ' + file.name);
@@ -457,42 +901,35 @@
                     
                     console.log('STEP Result:', result);
                     
-                    // Get part name from mesh or root
                     let partName = file.name.replace(/\.(stp|step)$/i, '');
                     if (result.meshes[0] && result.meshes[0].name) {
                         partName = result.meshes[0].name;
-                    } else if (result.root && result.root.children && result.root.children[0] && result.root.children[0].name) {
-                        partName = result.root.children[0].name;
                     }
                     
-                    // Build Three.js geometry from meshes
                     log('Building 3D geometry...');
                     
                     if (!scene) initThreeJS();
                     
-                    // Clear previous
-                    if (currentMesh) {
-                        scene.remove(currentMesh);
+                    if (currentGroup) {
+                        scene.remove(currentGroup);
                     }
                     
-                    const group = new THREE.Group();
+                    currentGroup = new THREE.Group();
                     let totalVertices = 0;
                     let totalTriangles = 0;
-                    let allEdgeStats = { totalEdges: 0, potentialArcEdges: 0, straightEdges: 0 };
+                    let brepFaces = 0;
+                    faceColors = [];
                     
-                    // Bounding box
                     let minX = Infinity, minY = Infinity, minZ = Infinity;
                     let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
                     
                     for (const meshData of result.meshes) {
+                        // Create geometry
                         const geometry = new THREE.BufferGeometry();
                         
-                        // Convert to TypedArrays using helper functions
-                        const posArray = meshData.attributes.position.array;
-                        const positions = toFloat32Array(posArray);
+                        const positions = toFloat32Array(meshData.attributes.position.array);
                         geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
                         
-                        // Update bounding box
                         for (let i = 0; i < positions.length; i += 3) {
                             minX = Math.min(minX, positions[i]);
                             maxX = Math.max(maxX, positions[i]);
@@ -502,7 +939,6 @@
                             maxZ = Math.max(maxZ, positions[i + 2]);
                         }
                         
-                        // Normals
                         if (meshData.attributes.normal && meshData.attributes.normal.array) {
                             const normals = toFloat32Array(meshData.attributes.normal.array);
                             geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
@@ -510,72 +946,98 @@
                             geometry.computeVertexNormals();
                         }
                         
-                        // Indices
+                        let indices = null;
                         if (meshData.index && meshData.index.array) {
-                            const indices = toUint32Array(meshData.index.array);
+                            indices = toUint32Array(meshData.index.array);
                             geometry.setIndex(new THREE.Uint32BufferAttribute(indices, 1));
                         }
                         
                         totalVertices += positions.length / 3;
-                        totalTriangles += meshData.index ? meshData.index.array.length / 3 : positions.length / 9;
+                        totalTriangles += indices ? indices.length / 3 : positions.length / 9;
+                        brepFaces += meshData.brep_faces ? meshData.brep_faces.length : 0;
                         
-                        // Create mesh
-                        const material = new THREE.MeshPhongMaterial({
+                        // Create solid color mesh
+                        const solidMaterial = new THREE.MeshPhongMaterial({
                             color: meshData.color ? new THREE.Color(meshData.color[0], meshData.color[1], meshData.color[2]) : 0x6c63ff,
                             side: THREE.DoubleSide,
                             flatShading: false
                         });
                         
-                        const mesh = new THREE.Mesh(geometry, material);
-                        group.add(mesh);
+                        meshObjects.solid = new THREE.Mesh(geometry, solidMaterial);
+                        currentGroup.add(meshObjects.solid);
                         
-                        // Extract and visualize edges
-                        const edgeAnalysis = analyzeEdges(geometry);
-                        allEdgeStats.totalEdges += edgeAnalysis.totalEdges;
-                        allEdgeStats.potentialArcEdges += edgeAnalysis.potentialArcEdges;
-                        allEdgeStats.straightEdges += edgeAnalysis.straightEdges;
+                        // Create random colored mesh with material groups
+                        if (meshData.brep_faces && meshData.brep_faces.length > 0) {
+                            const randomGeometry = geometry.clone();
+                            const colors = generateDistinctColors(meshData.brep_faces.length);
+                            const materials = [];
+                            
+                            // Clear existing groups
+                            randomGeometry.clearGroups();
+                            
+                            for (let i = 0; i < meshData.brep_faces.length; i++) {
+                                const face = meshData.brep_faces[i];
+                                const color = colors[i];
+                                const hex = hslToHex(color.h, color.s, color.l);
+                                
+                                materials.push(new THREE.MeshPhongMaterial({
+                                    color: new THREE.Color(hex),
+                                    side: THREE.DoubleSide,
+                                    flatShading: false
+                                }));
+                                
+                                // Add group: start index, count, material index
+                                // brep_faces gives us triangle indices (first, last are triangle numbers)
+                                const start = face.first * 3;
+                                const count = (face.last - face.first + 1) * 3;
+                                randomGeometry.addGroup(start, count, i);
+                                
+                                // Store for display
+                                faceColors.push({
+                                    h: color.h,
+                                    s: color.s,
+                                    l: color.l,
+                                    triangles: face.last - face.first + 1
+                                });
+                            }
+                            
+                            meshObjects.random = new THREE.Mesh(randomGeometry, materials);
+                            meshObjects.random.visible = false;
+                            currentGroup.add(meshObjects.random);
+                        }
                         
-                        // Add edge lines
-                        const edgeMaterial = new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 1 });
-                        const edgeLines = new THREE.LineSegments(edgeAnalysis.geometry, edgeMaterial);
-                        group.add(edgeLines);
+                        // Edge detection
+                        log('Analyzing edges...');
+                        const threejsResult = detectEdgesThreeJS(geometry);
+                        const partcraftResult = detectEdgesPartcraft(geometry);
+                        
+                        analysisResults = {
+                            threejs: threejsResult,
+                            partcraft: partcraftResult,
+                            vertices: totalVertices,
+                            triangles: totalTriangles,
+                            brepFaces: brepFaces
+                        };
                     }
                     
-                    scene.add(group);
-                    currentMesh = group;
+                    scene.add(currentGroup);
                     
-                    fitCameraToObject(group);
+                    updateEdgeDisplay();
+                    updateFaceDisplay();
                     
-                    // Dimensions (already in inches from linearUnit param)
+                    fitCameraToObject(currentGroup);
+                    
                     const width = maxX - minX;
                     const height = maxY - minY;
                     const depth = maxZ - minZ;
                     
-                    // Update UI
                     document.getElementById('part-name').textContent = partName;
                     document.getElementById('dim-x').textContent = width.toFixed(3);
                     document.getElementById('dim-y').textContent = height.toFixed(3);
                     document.getElementById('dim-z').textContent = depth.toFixed(3);
                     
-                    // Edge stats
-                    edgeStatsEl.innerHTML = `
-                        <div class="edge-stat"><span>Total Edges:</span><span>${allEdgeStats.totalEdges}</span></div>
-                        <div class="edge-stat"><span>Potential Arc Edges:</span><span>${allEdgeStats.potentialArcEdges}</span></div>
-                        <div class="edge-stat"><span>Straight Edges:</span><span>${allEdgeStats.straightEdges}</span></div>
-                        <div class="edge-stat"><span>Vertices:</span><span>${totalVertices}</span></div>
-                        <div class="edge-stat"><span>Triangles:</span><span>${totalTriangles}</span></div>
-                        <div class="edge-stat"><span>B-Rep Faces:</span><span>${result.meshes[0].brep_faces ? result.meshes[0].brep_faces.length : 0}</span></div>
-                        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #3a3a5a;">
-                            <h4 style="color: #6c63ff; margin-bottom: 10px;">Bounding Box (inches)</h4>
-                            <div class="edge-stat"><span>X:</span><span>${minX.toFixed(3)} → ${maxX.toFixed(3)}</span></div>
-                            <div class="edge-stat"><span>Y:</span><span>${minY.toFixed(3)} → ${maxY.toFixed(3)}</span></div>
-                            <div class="edge-stat"><span>Z:</span><span>${minZ.toFixed(3)} → ${maxZ.toFixed(3)}</span></div>
-                            <div class="edge-stat"><span>Size:</span><span>${width.toFixed(3)} × ${height.toFixed(3)} × ${depth.toFixed(3)}</span></div>
-                        </div>
-                    `;
-                    
                     resultsEl.classList.add('show');
-                    log('✓ Analysis complete! Rotate the 3D view with your mouse.');
+                    log('✓ Analysis complete! Use toggles to explore.');
 
                 } catch (err) {
                     log('Error: ' + err.message);
@@ -584,7 +1046,6 @@
                 }
             }
             
-            // Handle window resize
             window.addEventListener('resize', () => {
                 if (renderer && camera) {
                     const width = viewerEl.clientWidth;
