@@ -20,7 +20,7 @@
         }
         
         .container {
-            max-width: 900px;
+            max-width: 1200px;
             margin: 0 auto;
         }
         
@@ -55,7 +55,7 @@
             font-family: monospace;
             font-size: 13px;
             white-space: pre-wrap;
-            min-height: 60px;
+            min-height: 40px;
         }
         
         .upload-area {
@@ -78,6 +78,10 @@
             cursor: not-allowed;
         }
         
+        .upload-area.hidden {
+            display: none;
+        }
+        
         .upload-area input {
             display: none;
         }
@@ -88,9 +92,6 @@
         }
         
         .results {
-            background: #2a2a4a;
-            border-radius: 8px;
-            padding: 20px;
             display: none;
         }
         
@@ -98,64 +99,85 @@
             display: block;
         }
         
-        .results h3 {
-            margin-bottom: 15px;
-            color: #6c63ff;
-        }
-        
-        .result-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-        }
-        
-        .result-card {
-            background: #1a1a2e;
+        .info-bar {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
             padding: 15px;
+            background: #2a2a4a;
             border-radius: 8px;
         }
         
-        .result-card label {
-            font-size: 11px;
+        .info-item {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .info-item label {
+            font-size: 10px;
             text-transform: uppercase;
             color: #888;
             letter-spacing: 1px;
         }
         
-        .result-card .value {
-            font-size: 24px;
+        .info-item .value {
+            font-size: 18px;
             font-weight: 600;
-            margin-top: 5px;
         }
         
-        .result-card .unit {
-            font-size: 14px;
-            color: #888;
+        .viewer-container {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
         }
         
-        .debug {
-            margin-top: 20px;
-            padding: 15px;
+        .viewer-3d {
             background: #1a1a2e;
             border-radius: 8px;
-            font-family: monospace;
-            font-size: 11px;
-            max-height: 400px;
-            overflow: auto;
-            white-space: pre-wrap;
-            color: #888;
+            overflow: hidden;
+            aspect-ratio: 4/3;
         }
         
-        .debug-section {
-            margin-bottom: 15px;
-            padding-bottom: 15px;
+        .viewer-3d canvas {
+            width: 100% !important;
+            height: 100% !important;
+        }
+        
+        .edge-info {
+            background: #2a2a4a;
+            border-radius: 8px;
+            padding: 15px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow: auto;
+        }
+        
+        .edge-info h4 {
+            color: #6c63ff;
+            margin-bottom: 10px;
+        }
+        
+        .edge-stat {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
             border-bottom: 1px solid #3a3a5a;
         }
         
-        .debug-section h4 {
-            color: #6c63ff;
-            margin-bottom: 8px;
-            font-size: 12px;
+        .new-file-btn {
+            background: #6c63ff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .new-file-btn:hover {
+            background: #5b54d6;
         }
     </style>
 </head>
@@ -174,58 +196,120 @@
         </div>
         
         <div class="results" id="results">
-            <h3>Part Analysis</h3>
-            <div class="result-grid">
-                <div class="result-card">
-                    <label>Part Name (from STEP)</label>
-                    <div class="value" id="part-name" style="font-size: 18px;">-</div>
+            <div class="info-bar">
+                <div class="info-item">
+                    <label>Part Name</label>
+                    <div class="value" id="part-name">-</div>
                 </div>
-                <div class="result-card">
-                    <label>Width (X)</label>
-                    <div class="value"><span id="dim-x">-</span> <span class="unit">in</span></div>
+                <div class="info-item">
+                    <label>X (Width)</label>
+                    <div class="value"><span id="dim-x">-</span>"</div>
                 </div>
-                <div class="result-card">
-                    <label>Height (Y)</label>
-                    <div class="value"><span id="dim-y">-</span> <span class="unit">in</span></div>
+                <div class="info-item">
+                    <label>Y (Height)</label>
+                    <div class="value"><span id="dim-y">-</span>"</div>
                 </div>
-                <div class="result-card">
-                    <label>Depth (Z)</label>
-                    <div class="value"><span id="dim-z">-</span> <span class="unit">in</span></div>
+                <div class="info-item">
+                    <label>Z (Depth)</label>
+                    <div class="value"><span id="dim-z">-</span>"</div>
                 </div>
-                <div class="result-card">
-                    <label>Meshes</label>
-                    <div class="value" id="mesh-count">-</div>
-                </div>
-                <div class="result-card">
-                    <label>Faces</label>
-                    <div class="value" id="face-count">-</div>
+                <div class="info-item">
+                    <button class="new-file-btn" id="new-file-btn">New File</button>
                 </div>
             </div>
-            <div class="debug" id="debug"></div>
+            
+            <div class="viewer-container">
+                <div class="viewer-3d" id="viewer-3d"></div>
+                <div class="edge-info" id="edge-info">
+                    <h4>Edge Analysis</h4>
+                    <div id="edge-stats"></div>
+                </div>
+            </div>
         </div>
     </div>
     
-    <div class="version">v0.0.7</div>
+    <div class="version">v0.0.8</div>
 
-    <!-- Using latest version that supports params -->
     <script src="https://cdn.jsdelivr.net/npm/occt-import-js@0.0.23/dist/occt-import-js.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script>
         (async function() {
             const statusEl = document.getElementById('status');
             const uploadArea = document.getElementById('upload-area');
             const fileInput = document.getElementById('file-input');
             const resultsEl = document.getElementById('results');
-            const debugEl = document.getElementById('debug');
+            const viewerEl = document.getElementById('viewer-3d');
+            const edgeStatsEl = document.getElementById('edge-stats');
+            const newFileBtn = document.getElementById('new-file-btn');
 
             let occt = null;
+            let scene, camera, renderer, controls;
+            let currentMesh = null;
 
             function log(msg) {
                 statusEl.textContent = msg;
             }
 
-            // Initialize
+            // Initialize Three.js
+            function initThreeJS() {
+                scene = new THREE.Scene();
+                scene.background = new THREE.Color(0x1a1a2e);
+                
+                const width = viewerEl.clientWidth;
+                const height = viewerEl.clientHeight;
+                
+                camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 10000);
+                camera.position.set(50, 50, 50);
+                
+                renderer = new THREE.WebGLRenderer({ antialias: true });
+                renderer.setSize(width, height);
+                renderer.setPixelRatio(window.devicePixelRatio);
+                viewerEl.appendChild(renderer.domElement);
+                
+                controls = new THREE.OrbitControls(camera, renderer.domElement);
+                controls.enableDamping = true;
+                
+                // Lights
+                const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+                scene.add(ambientLight);
+                
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(50, 100, 50);
+                scene.add(directionalLight);
+                
+                const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.4);
+                directionalLight2.position.set(-50, -50, -50);
+                scene.add(directionalLight2);
+                
+                animate();
+            }
+            
+            function animate() {
+                requestAnimationFrame(animate);
+                controls.update();
+                renderer.render(scene, camera);
+            }
+            
+            function fitCameraToObject(object) {
+                const box = new THREE.Box3().setFromObject(object);
+                const center = box.getCenter(new THREE.Vector3());
+                const size = box.getSize(new THREE.Vector3());
+                
+                const maxDim = Math.max(size.x, size.y, size.z);
+                const fov = camera.fov * (Math.PI / 180);
+                let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
+                cameraZ *= 2.5;
+                
+                camera.position.set(center.x + cameraZ * 0.5, center.y + cameraZ * 0.5, center.z + cameraZ);
+                camera.lookAt(center);
+                controls.target.copy(center);
+                controls.update();
+            }
+
+            // Initialize OCCT
             try {
-                log('Loading STEP parser (v0.0.23)...');
+                log('Loading STEP parser...');
                 occt = await occtimportjs({
                     locateFile: (name) => {
                         return 'https://cdn.jsdelivr.net/npm/occt-import-js@0.0.23/dist/' + name;
@@ -247,9 +331,7 @@
 
             uploadArea.addEventListener('dragover', (e) => {
                 e.preventDefault();
-                if (!uploadArea.classList.contains('disabled')) {
-                    uploadArea.classList.add('dragover');
-                }
+                uploadArea.classList.add('dragover');
             });
 
             uploadArea.addEventListener('dragleave', () => {
@@ -259,7 +341,7 @@
             uploadArea.addEventListener('drop', (e) => {
                 e.preventDefault();
                 uploadArea.classList.remove('dragover');
-                if (!uploadArea.classList.contains('disabled') && e.dataTransfer.files.length) {
+                if (e.dataTransfer.files.length) {
                     processFile(e.dataTransfer.files[0]);
                 }
             });
@@ -269,146 +351,262 @@
                     processFile(e.target.files[0]);
                 }
             });
+            
+            newFileBtn.addEventListener('click', () => {
+                resultsEl.classList.remove('show');
+                uploadArea.classList.remove('hidden');
+                if (currentMesh) {
+                    scene.remove(currentMesh);
+                    currentMesh = null;
+                }
+                fileInput.value = '';
+            });
 
-            // Recursively explore hierarchy
-            function exploreNode(node, depth = 0) {
-                let info = {
-                    name: node.name || '(unnamed)',
-                    meshIndices: node.meshes || [],
-                    childCount: node.children ? node.children.length : 0,
-                    allKeys: Object.keys(node)
-                };
+            // Extract edges and analyze them
+            function analyzeEdges(geometry) {
+                // Use EdgesGeometry to find sharp edges (angle threshold in degrees)
+                const edgesGeometry = new THREE.EdgesGeometry(geometry, 30);
+                const edgePositions = edgesGeometry.attributes.position.array;
                 
-                let children = [];
-                if (node.children && node.children.length > 0) {
-                    for (let child of node.children) {
-                        children.push(exploreNode(child, depth + 1));
+                // Each edge is 2 points (6 floats)
+                const edgeCount = edgePositions.length / 6;
+                
+                // Group connected edges into chains
+                const edges = [];
+                for (let i = 0; i < edgeCount; i++) {
+                    const idx = i * 6;
+                    edges.push({
+                        start: new THREE.Vector3(edgePositions[idx], edgePositions[idx + 1], edgePositions[idx + 2]),
+                        end: new THREE.Vector3(edgePositions[idx + 3], edgePositions[idx + 4], edgePositions[idx + 5]),
+                        length: 0
+                    });
+                    edges[i].length = edges[i].start.distanceTo(edges[i].end);
+                }
+                
+                // Classify edges by length consistency (arcs have many similar-length segments)
+                const lengthGroups = {};
+                const tolerance = 0.001;
+                
+                for (const edge of edges) {
+                    const roundedLength = Math.round(edge.length / tolerance) * tolerance;
+                    const key = roundedLength.toFixed(4);
+                    if (!lengthGroups[key]) {
+                        lengthGroups[key] = [];
+                    }
+                    lengthGroups[key].push(edge);
+                }
+                
+                // Find potential arcs (groups with many same-length edges)
+                let potentialArcEdges = 0;
+                let straightEdges = 0;
+                
+                for (const key in lengthGroups) {
+                    if (lengthGroups[key].length >= 3) {
+                        // Likely part of an arc (tessellated curve)
+                        potentialArcEdges += lengthGroups[key].length;
+                    } else {
+                        straightEdges += lengthGroups[key].length;
                     }
                 }
                 
-                if (children.length > 0) {
-                    info.children = children;
+                return {
+                    geometry: edgesGeometry,
+                    totalEdges: edgeCount,
+                    potentialArcEdges,
+                    straightEdges,
+                    lengthGroups: Object.keys(lengthGroups).length,
+                    edges
+                };
+            }
+            
+            // Try to fit a circle to a set of points
+            function fitCircle(points) {
+                if (points.length < 3) return null;
+                
+                // Use first, middle, and last points
+                const p1 = points[0];
+                const p2 = points[Math.floor(points.length / 2)];
+                const p3 = points[points.length - 1];
+                
+                // Calculate circle through 3 points (2D - project to best-fit plane first)
+                // For now, simplified: assume XY plane
+                const ax = p1.x, ay = p1.y;
+                const bx = p2.x, by = p2.y;
+                const cx = p3.x, cy = p3.y;
+                
+                const d = 2 * (ax * (by - cy) + bx * (cy - ay) + cx * (ay - by));
+                if (Math.abs(d) < 0.0001) return null; // Collinear points
+                
+                const ux = ((ax * ax + ay * ay) * (by - cy) + (bx * bx + by * by) * (cy - ay) + (cx * cx + cy * cy) * (ay - by)) / d;
+                const uy = ((ax * ax + ay * ay) * (cx - bx) + (bx * bx + by * by) * (ax - cx) + (cx * cx + cy * cy) * (bx - ax)) / d;
+                
+                const center = new THREE.Vector2(ux, uy);
+                const radius = center.distanceTo(new THREE.Vector2(ax, ay));
+                
+                // Check if all points lie on this circle
+                let maxError = 0;
+                for (const p of points) {
+                    const dist = center.distanceTo(new THREE.Vector2(p.x, p.y));
+                    const error = Math.abs(dist - radius);
+                    maxError = Math.max(maxError, error);
                 }
                 
-                return info;
+                return {
+                    center,
+                    radius,
+                    maxError,
+                    isArc: maxError < radius * 0.01 // Within 1% tolerance
+                };
             }
 
             async function processFile(file) {
                 log('Reading: ' + file.name);
+                uploadArea.classList.add('hidden');
 
                 try {
                     const buffer = await file.arrayBuffer();
                     const fileBuffer = new Uint8Array(buffer);
 
-                    log('Parsing STEP file with inch units...');
+                    log('Parsing STEP file...');
                     
-                    // v0.0.23 supports params
-                    const params = {
-                        linearUnit: 'inch'
-                    };
+                    const result = occt.ReadStepFile(fileBuffer, { linearUnit: 'inch' });
                     
-                    const result = occt.ReadStepFile(fileBuffer, params);
+                    if (!result.success) {
+                        throw new Error('Failed to parse STEP file');
+                    }
                     
-                    console.log('Full STEP Result:', result);
+                    console.log('STEP Result:', result);
                     
-                    // Get part name from hierarchy
-                    let partName = '(unknown)';
+                    // Get part name
+                    let partName = file.name.replace(/\.(stp|step)$/i, '');
                     if (result.root && result.root.name) {
                         partName = result.root.name;
                     }
                     
-                    // Calculate bounding box
+                    // Build Three.js geometry from meshes
+                    log('Building 3D geometry...');
+                    
+                    if (!scene) initThreeJS();
+                    
+                    // Clear previous
+                    if (currentMesh) {
+                        scene.remove(currentMesh);
+                    }
+                    
+                    const group = new THREE.Group();
+                    let totalVertices = 0;
+                    let totalTriangles = 0;
+                    let allEdgeStats = { totalEdges: 0, potentialArcEdges: 0, straightEdges: 0 };
+                    
+                    // Bounding box
                     let minX = Infinity, minY = Infinity, minZ = Infinity;
                     let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
-                    let totalFaces = 0;
-
-                    for (let i = 0; i < result.meshes.length; i++) {
-                        const mesh = result.meshes[i];
-                        const positions = mesh.attributes.position.array;
+                    
+                    for (const meshData of result.meshes) {
+                        const geometry = new THREE.BufferGeometry();
                         
-                        if (mesh.brep_faces) {
-                            totalFaces += mesh.brep_faces.length;
+                        // Positions
+                        const positions = meshData.attributes.position.array;
+                        geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                        
+                        // Update bounding box
+                        for (let i = 0; i < positions.length; i += 3) {
+                            minX = Math.min(minX, positions[i]);
+                            maxX = Math.max(maxX, positions[i]);
+                            minY = Math.min(minY, positions[i + 1]);
+                            maxY = Math.max(maxY, positions[i + 1]);
+                            minZ = Math.min(minZ, positions[i + 2]);
+                            maxZ = Math.max(maxZ, positions[i + 2]);
                         }
                         
-                        for (let j = 0; j < positions.length; j += 3) {
-                            minX = Math.min(minX, positions[j]);
-                            maxX = Math.max(maxX, positions[j]);
-                            minY = Math.min(minY, positions[j + 1]);
-                            maxY = Math.max(maxY, positions[j + 1]);
-                            minZ = Math.min(minZ, positions[j + 2]);
-                            maxZ = Math.max(maxZ, positions[j + 2]);
+                        // Normals
+                        if (meshData.attributes.normal) {
+                            geometry.setAttribute('normal', new THREE.Float32BufferAttribute(meshData.attributes.normal.array, 3));
+                        } else {
+                            geometry.computeVertexNormals();
                         }
+                        
+                        // Indices
+                        if (meshData.index) {
+                            geometry.setIndex(new THREE.BufferAttribute(meshData.index.array, 1));
+                        }
+                        
+                        totalVertices += positions.length / 3;
+                        totalTriangles += meshData.index ? meshData.index.array.length / 3 : positions.length / 9;
+                        
+                        // Create mesh
+                        const material = new THREE.MeshPhongMaterial({
+                            color: meshData.color ? new THREE.Color(meshData.color[0], meshData.color[1], meshData.color[2]) : 0x6c63ff,
+                            side: THREE.DoubleSide,
+                            flatShading: false
+                        });
+                        
+                        const mesh = new THREE.Mesh(geometry, material);
+                        group.add(mesh);
+                        
+                        // Extract and visualize edges
+                        const edgeAnalysis = analyzeEdges(geometry);
+                        allEdgeStats.totalEdges += edgeAnalysis.totalEdges;
+                        allEdgeStats.potentialArcEdges += edgeAnalysis.potentialArcEdges;
+                        allEdgeStats.straightEdges += edgeAnalysis.straightEdges;
+                        
+                        // Add edge lines
+                        const edgeMaterial = new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 1 });
+                        const edgeLines = new THREE.LineSegments(edgeAnalysis.geometry, edgeMaterial);
+                        group.add(edgeLines);
                     }
-
-                    const width = maxX - minX;
-                    const height = maxY - minY;
-                    const depth = maxZ - minZ;
-
+                    
+                    scene.add(group);
+                    currentMesh = group;
+                    
+                    fitCameraToObject(group);
+                    
+                    // Convert to inches (library returns mm)
+                    const scale = 1 / 25.4;
+                    const width = (maxX - minX) * scale;
+                    const height = (maxY - minY) * scale;
+                    const depth = (maxZ - minZ) * scale;
+                    
                     // Update UI
                     document.getElementById('part-name').textContent = partName;
                     document.getElementById('dim-x').textContent = width.toFixed(3);
                     document.getElementById('dim-y').textContent = height.toFixed(3);
                     document.getElementById('dim-z').textContent = depth.toFixed(3);
-                    document.getElementById('mesh-count').textContent = result.meshes.length;
-                    document.getElementById('face-count').textContent = totalFaces;
                     
-                    // Build detailed debug info
-                    let debugHTML = '';
+                    // Edge stats
+                    edgeStatsEl.innerHTML = `
+                        <div class="edge-stat"><span>Total Edges:</span><span>${allEdgeStats.totalEdges}</span></div>
+                        <div class="edge-stat"><span>Potential Arc Edges:</span><span>${allEdgeStats.potentialArcEdges}</span></div>
+                        <div class="edge-stat"><span>Straight Edges:</span><span>${allEdgeStats.straightEdges}</span></div>
+                        <div class="edge-stat"><span>Vertices:</span><span>${totalVertices}</span></div>
+                        <div class="edge-stat"><span>Triangles:</span><span>${totalTriangles}</span></div>
+                        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #3a3a5a;">
+                            <h4 style="color: #6c63ff; margin-bottom: 10px;">Bounding Box (inches)</h4>
+                            <div class="edge-stat"><span>Min:</span><span>(${(minX*scale).toFixed(3)}, ${(minY*scale).toFixed(3)}, ${(minZ*scale).toFixed(3)})</span></div>
+                            <div class="edge-stat"><span>Max:</span><span>(${(maxX*scale).toFixed(3)}, ${(maxY*scale).toFixed(3)}, ${(maxZ*scale).toFixed(3)})</span></div>
+                        </div>
+                    `;
                     
-                    // Root hierarchy
-                    debugHTML += '<div class="debug-section"><h4>📁 Hierarchy (root)</h4>';
-                    if (result.root) {
-                        debugHTML += JSON.stringify(exploreNode(result.root), null, 2);
-                    } else {
-                        debugHTML += 'No root node found';
-                    }
-                    debugHTML += '</div>';
-                    
-                    // Top-level keys
-                    debugHTML += '<div class="debug-section"><h4>🔑 Result Keys</h4>';
-                    debugHTML += JSON.stringify(Object.keys(result), null, 2);
-                    debugHTML += '</div>';
-                    
-                    // Mesh details
-                    debugHTML += '<div class="debug-section"><h4>📦 Meshes</h4>';
-                    for (let i = 0; i < result.meshes.length; i++) {
-                        const mesh = result.meshes[i];
-                        debugHTML += `\nMesh ${i}:\n`;
-                        debugHTML += `  name: ${mesh.name || '(none)'}\n`;
-                        debugHTML += `  color: ${mesh.color ? JSON.stringify(mesh.color) : '(none)'}\n`;
-                        debugHTML += `  keys: ${Object.keys(mesh).join(', ')}\n`;
-                        debugHTML += `  vertices: ${mesh.attributes.position.array.length / 3}\n`;
-                        debugHTML += `  brep_faces: ${mesh.brep_faces ? mesh.brep_faces.length : 0}\n`;
-                        
-                        // Show first brep_face structure
-                        if (mesh.brep_faces && mesh.brep_faces.length > 0) {
-                            debugHTML += `  brep_faces[0] keys: ${Object.keys(mesh.brep_faces[0]).join(', ')}\n`;
-                            debugHTML += `  brep_faces[0]: ${JSON.stringify(mesh.brep_faces[0])}\n`;
-                        }
-                    }
-                    debugHTML += '</div>';
-                    
-                    // Bounding box
-                    debugHTML += '<div class="debug-section"><h4>📐 Bounding Box</h4>';
-                    debugHTML += JSON.stringify({
-                        min: { x: minX.toFixed(3), y: minY.toFixed(3), z: minZ.toFixed(3) },
-                        max: { x: maxX.toFixed(3), y: maxY.toFixed(3), z: maxZ.toFixed(3) },
-                        size: { x: width.toFixed(3), y: height.toFixed(3), z: depth.toFixed(3) }
-                    }, null, 2);
-                    debugHTML += '</div>';
-                    
-                    debugEl.innerHTML = debugHTML;
-
                     resultsEl.classList.add('show');
-                    log('✓ Analysis complete!');
+                    log('✓ Analysis complete! Rotate the 3D view with your mouse.');
 
                 } catch (err) {
                     log('Error: ' + err.message);
                     console.error(err);
-                    debugEl.innerHTML = '<div class="debug-section"><h4>❌ Error</h4>' + err.stack + '</div>';
-                    resultsEl.classList.add('show');
+                    uploadArea.classList.remove('hidden');
                 }
             }
+            
+            // Handle window resize
+            window.addEventListener('resize', () => {
+                if (renderer && camera) {
+                    const width = viewerEl.clientWidth;
+                    const height = viewerEl.clientHeight;
+                    camera.aspect = width / height;
+                    camera.updateProjectionMatrix();
+                    renderer.setSize(width, height);
+                }
+            });
         })();
     </script>
 </body>
