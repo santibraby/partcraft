@@ -20,7 +20,7 @@
         }
         
         .container {
-            max-width: 800px;
+            max-width: 900px;
             margin: 0 auto;
         }
         
@@ -132,6 +132,31 @@
             font-size: 14px;
             color: #888;
         }
+        
+        .debug {
+            margin-top: 20px;
+            padding: 15px;
+            background: #1a1a2e;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 11px;
+            max-height: 400px;
+            overflow: auto;
+            white-space: pre-wrap;
+            color: #888;
+        }
+        
+        .debug-section {
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #3a3a5a;
+        }
+        
+        .debug-section h4 {
+            color: #6c63ff;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
     </style>
 </head>
 <body>
@@ -152,8 +177,8 @@
             <h3>Part Analysis</h3>
             <div class="result-grid">
                 <div class="result-card">
-                    <label>Part Name</label>
-                    <div class="value" id="part-name">-</div>
+                    <label>Part Name (from STEP)</label>
+                    <div class="value" id="part-name" style="font-size: 18px;">-</div>
                 </div>
                 <div class="result-card">
                     <label>Width (X)</label>
@@ -172,14 +197,15 @@
                     <div class="value" id="mesh-count">-</div>
                 </div>
                 <div class="result-card">
-                    <label>Edges</label>
-                    <div class="value" id="edge-count">-</div>
+                    <label>Faces</label>
+                    <div class="value" id="face-count">-</div>
                 </div>
             </div>
+            <div class="debug" id="debug"></div>
         </div>
     </div>
     
-    <div class="version">v0.0.3</div>
+    <div class="version">v0.0.6</div>
 
     <script src="https://cdn.jsdelivr.net/npm/occt-import-js@0.0.12/dist/occt-import-js.js"></script>
     <script>
@@ -188,6 +214,7 @@
             const uploadArea = document.getElementById('upload-area');
             const fileInput = document.getElementById('file-input');
             const resultsEl = document.getElementById('results');
+            const debugEl = document.getElementById('debug');
 
             let occt = null;
 
@@ -242,6 +269,29 @@
                 }
             });
 
+            // Recursively explore hierarchy
+            function exploreNode(node, depth = 0) {
+                let info = {
+                    name: node.name || '(unnamed)',
+                    meshIndices: node.meshes || [],
+                    childCount: node.children ? node.children.length : 0,
+                    allKeys: Object.keys(node)
+                };
+                
+                let children = [];
+                if (node.children && node.children.length > 0) {
+                    for (let child of node.children) {
+                        children.push(exploreNode(child, depth + 1));
+                    }
+                }
+                
+                if (children.length > 0) {
+                    info.children = children;
+                }
+                
+                return info;
+            }
+
             async function processFile(file) {
                 log('Reading: ' + file.name);
 
@@ -249,39 +299,103 @@
                     const buffer = await file.arrayBuffer();
                     const fileBuffer = new Uint8Array(buffer);
 
-                    // Get part name from filename
-                    let partName = file.name.replace(/\.(stp|step)$/i, '');
-
-                    log('Parsing STEP file...');
-                    const result = occt.ReadStepFile(fileBuffer);
-
+                    log('Parsing STEP file with inch units...');
+                    
+                    const params = {
+                        linearUnit: 'inch'
+                    };
+                    
+                    const result = occt.ReadStepFile(fileBuffer, params);
+                    
+                    console.log('Full STEP Result:', result);
+                    
+                    // Get part name from hierarchy
+                    let partName = '(unknown)';
+                    if (result.root && result.root.name) {
+                        partName = result.root.name;
+                    }
+                    
                     // Calculate bounding box
                     let minX = Infinity, minY = Infinity, minZ = Infinity;
                     let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
-                    let totalEdges = 0;
+                    let totalFaces = 0;
 
-                    for (const mesh of result.meshes) {
+                    for (let i = 0; i < result.meshes.length; i++) {
+                        const mesh = result.meshes[i];
                         const positions = mesh.attributes.position.array;
-                        for (let i = 0; i < positions.length; i += 3) {
-                            minX = Math.min(minX, positions[i]);
-                            maxX = Math.max(maxX, positions[i]);
-                            minY = Math.min(minY, positions[i + 1]);
-                            maxY = Math.max(maxY, positions[i + 1]);
-                            minZ = Math.min(minZ, positions[i + 2]);
-                            maxZ = Math.max(maxZ, positions[i + 2]);
+                        
+                        if (mesh.brep_faces) {
+                            totalFaces += mesh.brep_faces.length;
                         }
-                        if (mesh.brep_edges) {
-                            totalEdges += mesh.brep_edges.length;
+                        
+                        for (let j = 0; j < positions.length; j += 3) {
+                            minX = Math.min(minX, positions[j]);
+                            maxX = Math.max(maxX, positions[j]);
+                            minY = Math.min(minY, positions[j + 1]);
+                            maxY = Math.max(maxY, positions[j + 1]);
+                            minZ = Math.min(minZ, positions[j + 2]);
+                            maxZ = Math.max(maxZ, positions[j + 2]);
                         }
                     }
 
+                    const width = maxX - minX;
+                    const height = maxY - minY;
+                    const depth = maxZ - minZ;
+
                     // Update UI
                     document.getElementById('part-name').textContent = partName;
-                    document.getElementById('dim-x').textContent = (maxX - minX).toFixed(3);
-                    document.getElementById('dim-y').textContent = (maxY - minY).toFixed(3);
-                    document.getElementById('dim-z').textContent = (maxZ - minZ).toFixed(3);
+                    document.getElementById('dim-x').textContent = width.toFixed(3);
+                    document.getElementById('dim-y').textContent = height.toFixed(3);
+                    document.getElementById('dim-z').textContent = depth.toFixed(3);
                     document.getElementById('mesh-count').textContent = result.meshes.length;
-                    document.getElementById('edge-count').textContent = totalEdges;
+                    document.getElementById('face-count').textContent = totalFaces;
+                    
+                    // Build detailed debug info
+                    let debugHTML = '';
+                    
+                    // Root hierarchy
+                    debugHTML += '<div class="debug-section"><h4>📁 Hierarchy (root)</h4>';
+                    if (result.root) {
+                        debugHTML += JSON.stringify(exploreNode(result.root), null, 2);
+                    } else {
+                        debugHTML += 'No root node found';
+                    }
+                    debugHTML += '</div>';
+                    
+                    // Top-level keys
+                    debugHTML += '<div class="debug-section"><h4>🔑 Result Keys</h4>';
+                    debugHTML += JSON.stringify(Object.keys(result), null, 2);
+                    debugHTML += '</div>';
+                    
+                    // Mesh details
+                    debugHTML += '<div class="debug-section"><h4>📦 Meshes</h4>';
+                    for (let i = 0; i < result.meshes.length; i++) {
+                        const mesh = result.meshes[i];
+                        debugHTML += `\nMesh ${i}:\n`;
+                        debugHTML += `  name: ${mesh.name || '(none)'}\n`;
+                        debugHTML += `  color: ${mesh.color ? JSON.stringify(mesh.color) : '(none)'}\n`;
+                        debugHTML += `  keys: ${Object.keys(mesh).join(', ')}\n`;
+                        debugHTML += `  vertices: ${mesh.attributes.position.array.length / 3}\n`;
+                        debugHTML += `  brep_faces: ${mesh.brep_faces ? mesh.brep_faces.length : 0}\n`;
+                        
+                        // Show first brep_face structure
+                        if (mesh.brep_faces && mesh.brep_faces.length > 0) {
+                            debugHTML += `  brep_faces[0] keys: ${Object.keys(mesh.brep_faces[0]).join(', ')}\n`;
+                            debugHTML += `  brep_faces[0]: ${JSON.stringify(mesh.brep_faces[0])}\n`;
+                        }
+                    }
+                    debugHTML += '</div>';
+                    
+                    // Bounding box
+                    debugHTML += '<div class="debug-section"><h4>📐 Bounding Box</h4>';
+                    debugHTML += JSON.stringify({
+                        min: { x: minX.toFixed(3), y: minY.toFixed(3), z: minZ.toFixed(3) },
+                        max: { x: maxX.toFixed(3), y: maxY.toFixed(3), z: maxZ.toFixed(3) },
+                        size: { x: width.toFixed(3), y: height.toFixed(3), z: depth.toFixed(3) }
+                    }, null, 2);
+                    debugHTML += '</div>';
+                    
+                    debugEl.innerHTML = debugHTML;
 
                     resultsEl.classList.add('show');
                     log('✓ Analysis complete!');
@@ -289,6 +403,8 @@
                 } catch (err) {
                     log('Error: ' + err.message);
                     console.error(err);
+                    debugEl.innerHTML = '<div class="debug-section"><h4>❌ Error</h4>' + err.stack + '</div>';
+                    resultsEl.classList.add('show');
                 }
             }
         })();
