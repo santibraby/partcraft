@@ -184,6 +184,7 @@
             align-items: center;
             margin-left: auto;
             font-size: 12px;
+            flex-wrap: wrap;
         }
         
         .legend-item {
@@ -198,18 +199,22 @@
             border-radius: 2px;
         }
         
-        .legend-color.line {
-            background: #00ff88;
-        }
-        
-        .legend-color.arc {
-            background: #ff69b4;
-        }
+        .legend-color.line { background: #00ff88; }
+        .legend-color.arc { background: #ff69b4; }
+        .legend-color.circle { background: #00bfff; }
+        .legend-color.ellipse { background: #ffa500; }
+        .legend-color.polyline { background: #888; }
         
         .viewer-container {
             display: grid;
             grid-template-columns: 2fr 1fr;
             gap: 20px;
+        }
+        
+        @media (max-width: 900px) {
+            .viewer-container {
+                grid-template-columns: 1fr;
+            }
         }
         
         .viewer-3d {
@@ -270,11 +275,33 @@
             background: #5b54d6;
         }
         
-        .arc-details {
+        .curve-details {
             font-size: 10px;
             color: #888;
-            margin-top: 5px;
+            margin-top: 10px;
+            max-height: 150px;
+            overflow-y: auto;
         }
+        
+        .curve-detail-item {
+            padding: 4px 0;
+            border-bottom: 1px dashed #3a3a5a;
+        }
+        
+        .curve-type-badge {
+            display: inline-block;
+            padding: 1px 6px;
+            border-radius: 3px;
+            font-size: 9px;
+            font-weight: bold;
+            margin-right: 5px;
+        }
+        
+        .curve-type-badge.line { background: #00ff88; color: #000; }
+        .curve-type-badge.arc { background: #ff69b4; color: #000; }
+        .curve-type-badge.circle { background: #00bfff; color: #000; }
+        .curve-type-badge.ellipse { background: #ffa500; color: #000; }
+        .curve-type-badge.polyline { background: #888; color: #fff; }
     </style>
 </head>
 <body>
@@ -348,6 +375,18 @@
                         <div class="legend-color arc"></div>
                         <span>Arcs</span>
                     </div>
+                    <div class="legend-item">
+                        <div class="legend-color circle"></div>
+                        <span>Circles</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color ellipse"></div>
+                        <span>Ellipses</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color polyline"></div>
+                        <span>Polylines</span>
+                    </div>
                 </div>
             </div>
             
@@ -361,7 +400,7 @@
         </div>
     </div>
     
-    <div class="version">v0.0.13</div>
+    <div class="version">v0.0.14</div>
 
     <script src="https://cdn.jsdelivr.net/npm/occt-import-js@0.0.23/dist/occt-import-js.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -388,6 +427,16 @@
             let edgeMode = 'threejs';
             let colorMode = 'black';
             let faceMode = 'solid';
+
+            // Curve type colors
+            const CURVE_COLORS = {
+                line: 0x00ff88,
+                arc: 0xff69b4,
+                circle: 0x00bfff,
+                ellipse: 0xffa500,
+                polyline: 0x888888,
+                unknown: 0x000000
+            };
 
             function log(msg) {
                 statusEl.textContent = msg;
@@ -478,10 +527,11 @@
             }
 
             // ============================================
-            // IMPROVED EDGE DETECTION
+            // CURVE CLASSIFICATION ENGINE
+            // Like Grasshopper's Is Arc/Circle/Ellipse
             // ============================================
             
-            // Get raw edges from Three.js
+            // Get raw edges from Three.js EdgesGeometry
             function getEdgesFromThreeJS(geometry) {
                 const edgesGeometry = new THREE.EdgesGeometry(geometry, 30);
                 const positions = edgesGeometry.attributes.position.array;
@@ -518,11 +568,10 @@
                 for (let i = 0; i < edges.length; i++) {
                     if (used[i]) continue;
                     
-                    // Start a new chain
                     const chain = [edges[i].start.clone(), edges[i].end.clone()];
                     used[i] = true;
                     
-                    // Extend forward from end
+                    // Extend forward
                     let searching = true;
                     while (searching) {
                         const found = findConnecting(chain[chain.length - 1], -1);
@@ -535,7 +584,7 @@
                         }
                     }
                     
-                    // Extend backward from start
+                    // Extend backward
                     searching = true;
                     while (searching) {
                         const found = findConnecting(chain[0], -1);
@@ -554,118 +603,409 @@
                 return chains;
             }
             
-            // Check if 3 points are collinear
-            function areCollinear(p1, p2, p3, tolerance = 0.001) {
-                const v1 = p2.clone().sub(p1);
-                const v2 = p3.clone().sub(p1);
-                const cross = v1.clone().cross(v2);
-                const area = cross.length() / 2;
-                const baseLength = Math.max(v1.length(), v2.length(), p2.distanceTo(p3));
-                if (baseLength < 0.0001) return true;
-                const height = (2 * area) / baseLength;
-                return height < tolerance;
+            // Check if chain is closed (first point == last point)
+            function isChainClosed(chain, tolerance = 0.001) {
+                if (chain.length < 3) return false;
+                return chain[0].distanceTo(chain[chain.length - 1]) < tolerance;
             }
             
-            // Fit circle through 3 points (in 3D - finds plane first)
-            function fitCircle3D(p1, p2, p3) {
-                // Get the plane normal
-                const v1 = p2.clone().sub(p1);
-                const v2 = p3.clone().sub(p1);
-                const normal = v1.clone().cross(v2);
-                
-                if (normal.length() < 0.0001) return null; // Collinear
-                
-                normal.normalize();
-                
-                // Create local 2D coordinate system
-                const xAxis = v1.clone().normalize();
-                const yAxis = normal.clone().cross(xAxis).normalize();
-                
-                // Project points to 2D
-                function to2D(p) {
-                    const rel = p.clone().sub(p1);
-                    return { x: rel.dot(xAxis), y: rel.dot(yAxis) };
+            // Calculate total arc length of a chain
+            function chainLength(chain) {
+                let len = 0;
+                for (let i = 0; i < chain.length - 1; i++) {
+                    len += chain[i].distanceTo(chain[i + 1]);
                 }
-                
-                const a = to2D(p1);
-                const b = to2D(p2);
-                const c = to2D(p3);
-                
-                // Circle through 3 points formula
-                const d = 2 * (a.x * (b.y - c.y) + b.x * (c.y - a.y) + c.x * (a.y - b.y));
-                if (Math.abs(d) < 0.0001) return null;
-                
-                const ux = ((a.x*a.x + a.y*a.y) * (b.y - c.y) + 
-                           (b.x*b.x + b.y*b.y) * (c.y - a.y) + 
-                           (c.x*c.x + c.y*c.y) * (a.y - b.y)) / d;
-                const uy = ((a.x*a.x + a.y*a.y) * (c.x - b.x) + 
-                           (b.x*b.x + b.y*b.y) * (a.x - c.x) + 
-                           (c.x*c.x + c.y*c.y) * (b.x - a.x)) / d;
-                
-                const radius = Math.sqrt((a.x - ux) ** 2 + (a.y - uy) ** 2);
-                
-                // Convert center back to 3D
-                const center3D = p1.clone()
-                    .add(xAxis.clone().multiplyScalar(ux))
-                    .add(yAxis.clone().multiplyScalar(uy));
-                
-                return {
-                    center: center3D,
-                    radius: radius,
-                    normal: normal,
-                    xAxis: xAxis,
-                    yAxis: yAxis,
-                    origin: p1
-                };
+                return len;
             }
             
-            // Check if a point lies on a circle (within tolerance)
-            function pointOnCircle(point, circle, toleranceRatio = 0.02) {
-                const dist = point.distanceTo(circle.center);
-                const error = Math.abs(dist - circle.radius);
-                return error < circle.radius * toleranceRatio;
-            }
-            
-            // Classify a chain as line or arc
-            function classifyChain(chain) {
-                if (chain.length < 2) return { type: 'line', points: chain };
-                if (chain.length === 2) return { type: 'line', points: chain };
+            // Get the best-fit plane for a set of points (using PCA)
+            function fitPlane(points) {
+                if (points.length < 3) return null;
                 
-                // Take first, middle, last points
-                const p1 = chain[0];
-                const p2 = chain[Math.floor(chain.length / 2)];
-                const p3 = chain[chain.length - 1];
+                // Compute centroid
+                const centroid = new THREE.Vector3();
+                for (const p of points) centroid.add(p);
+                centroid.divideScalar(points.length);
                 
-                // Check if collinear
-                if (areCollinear(p1, p2, p3, 0.005)) {
-                    return { type: 'line', points: chain };
+                // Build covariance matrix
+                let xx = 0, xy = 0, xz = 0, yy = 0, yz = 0, zz = 0;
+                for (const p of points) {
+                    const dx = p.x - centroid.x;
+                    const dy = p.y - centroid.y;
+                    const dz = p.z - centroid.z;
+                    xx += dx * dx;
+                    xy += dx * dy;
+                    xz += dx * dz;
+                    yy += dy * dy;
+                    yz += dy * dz;
+                    zz += dz * dz;
                 }
                 
-                // Try to fit a circle
-                const circle = fitCircle3D(p1, p2, p3);
-                if (!circle) {
-                    return { type: 'line', points: chain };
+                // Find normal via smallest eigenvector (power iteration on cross products)
+                // Simplified: try each axis-aligned candidate
+                const detX = yy * zz - yz * yz;
+                const detY = xx * zz - xz * xz;
+                const detZ = xx * yy - xy * xy;
+                
+                let normal;
+                if (detX >= detY && detX >= detZ) {
+                    normal = new THREE.Vector3(detX, xz * yz - xy * zz, xy * yz - xz * yy);
+                } else if (detY >= detX && detY >= detZ) {
+                    normal = new THREE.Vector3(xz * yz - xy * zz, detY, xy * xz - yz * xx);
+                } else {
+                    normal = new THREE.Vector3(xy * yz - xz * yy, xy * xz - yz * xx, detZ);
                 }
                 
-                // Check if ALL points lie on this circle
-                let allOnCircle = true;
-                for (const point of chain) {
-                    if (!pointOnCircle(point, circle, 0.03)) {
-                        allOnCircle = false;
-                        break;
+                if (normal.length() < 0.0001) {
+                    // Fallback: use first two vectors
+                    if (points.length >= 3) {
+                        const v1 = points[1].clone().sub(points[0]);
+                        const v2 = points[2].clone().sub(points[0]);
+                        normal = v1.cross(v2);
                     }
                 }
                 
-                if (allOnCircle) {
+                if (normal.length() < 0.0001) return null;
+                normal.normalize();
+                
+                return { centroid, normal };
+            }
+            
+            // Project 3D points to 2D plane coordinates
+            function projectTo2D(points, plane) {
+                const { centroid, normal } = plane;
+                
+                // Create orthonormal basis
+                let xAxis = new THREE.Vector3(1, 0, 0);
+                if (Math.abs(normal.dot(xAxis)) > 0.9) {
+                    xAxis = new THREE.Vector3(0, 1, 0);
+                }
+                xAxis = xAxis.clone().sub(normal.clone().multiplyScalar(normal.dot(xAxis))).normalize();
+                const yAxis = normal.clone().cross(xAxis).normalize();
+                
+                return {
+                    points2D: points.map(p => {
+                        const rel = p.clone().sub(centroid);
+                        return { x: rel.dot(xAxis), y: rel.dot(yAxis) };
+                    }),
+                    xAxis,
+                    yAxis,
+                    centroid,
+                    normal
+                };
+            }
+            
+            // Fit circle to 2D points using least squares (Kasa method)
+            function fitCircle2D(points2D) {
+                const n = points2D.length;
+                if (n < 3) return null;
+                
+                let sumX = 0, sumY = 0, sumX2 = 0, sumY2 = 0, sumXY = 0;
+                let sumX3 = 0, sumY3 = 0, sumX2Y = 0, sumXY2 = 0;
+                
+                for (const p of points2D) {
+                    const x2 = p.x * p.x;
+                    const y2 = p.y * p.y;
+                    sumX += p.x;
+                    sumY += p.y;
+                    sumX2 += x2;
+                    sumY2 += y2;
+                    sumXY += p.x * p.y;
+                    sumX3 += x2 * p.x;
+                    sumY3 += y2 * p.y;
+                    sumX2Y += x2 * p.y;
+                    sumXY2 += p.x * y2;
+                }
+                
+                const A = n * sumX2 - sumX * sumX;
+                const B = n * sumXY - sumX * sumY;
+                const C = n * sumY2 - sumY * sumY;
+                const D = 0.5 * (n * sumX3 + n * sumXY2 - sumX * sumX2 - sumX * sumY2);
+                const E = 0.5 * (n * sumX2Y + n * sumY3 - sumY * sumX2 - sumY * sumY2);
+                
+                const denom = A * C - B * B;
+                if (Math.abs(denom) < 1e-10) return null;
+                
+                const cx = (D * C - B * E) / denom;
+                const cy = (A * E - B * D) / denom;
+                
+                // Calculate radius as mean distance
+                let radiusSum = 0;
+                for (const p of points2D) {
+                    radiusSum += Math.sqrt((p.x - cx) ** 2 + (p.y - cy) ** 2);
+                }
+                const radius = radiusSum / n;
+                
+                // Calculate fitting error (RMS)
+                let errorSum = 0;
+                for (const p of points2D) {
+                    const dist = Math.sqrt((p.x - cx) ** 2 + (p.y - cy) ** 2);
+                    errorSum += (dist - radius) ** 2;
+                }
+                const rmsError = Math.sqrt(errorSum / n);
+                
+                return { cx, cy, radius, rmsError };
+            }
+            
+            // Fit ellipse to 2D points using direct least squares
+            function fitEllipse2D(points2D) {
+                const n = points2D.length;
+                if (n < 5) return null;
+                
+                // Direct ellipse fit using algebraic distance
+                // Ellipse equation: Ax² + Bxy + Cy² + Dx + Ey + F = 0
+                // Constraint: B² - 4AC < 0 (to ensure ellipse)
+                
+                // Build design matrix
+                const D1 = []; // x², xy, y²
+                const D2 = []; // x, y, 1
+                
+                for (const p of points2D) {
+                    D1.push([p.x * p.x, p.x * p.y, p.y * p.y]);
+                    D2.push([p.x, p.y, 1]);
+                }
+                
+                // Compute scatter matrices S1, S2, S3
+                const S1 = [[0,0,0],[0,0,0],[0,0,0]];
+                const S2 = [[0,0,0],[0,0,0],[0,0,0]];
+                const S3 = [[0,0,0],[0,0,0],[0,0,0]];
+                
+                for (let i = 0; i < n; i++) {
+                    for (let j = 0; j < 3; j++) {
+                        for (let k = 0; k < 3; k++) {
+                            S1[j][k] += D1[i][j] * D1[i][k];
+                            S2[j][k] += D1[i][j] * D2[i][k];
+                            S3[j][k] += D2[i][j] * D2[i][k];
+                        }
+                    }
+                }
+                
+                // Simplified: Use circle fit as fallback for ellipse
+                // Full ellipse fitting requires eigenvalue decomposition
+                const circleFit = fitCircle2D(points2D);
+                if (!circleFit) return null;
+                
+                // Check if it's more ellipse-like by analyzing aspect ratio
+                // This is a simplified check - could be improved with full ellipse fitting
+                let minX = Infinity, maxX = -Infinity;
+                let minY = Infinity, maxY = -Infinity;
+                
+                for (const p of points2D) {
+                    const dx = p.x - circleFit.cx;
+                    const dy = p.y - circleFit.cy;
+                    minX = Math.min(minX, dx);
+                    maxX = Math.max(maxX, dx);
+                    minY = Math.min(minY, dy);
+                    maxY = Math.max(maxY, dy);
+                }
+                
+                const extentX = maxX - minX;
+                const extentY = maxY - minY;
+                const aspectRatio = Math.max(extentX, extentY) / Math.min(extentX, extentY);
+                
+                return {
+                    cx: circleFit.cx,
+                    cy: circleFit.cy,
+                    radiusX: extentX / 2,
+                    radiusY: extentY / 2,
+                    aspectRatio,
+                    rmsError: circleFit.rmsError
+                };
+            }
+            
+            // Check if points are collinear
+            function arePointsCollinear(points, tolerance = 0.001) {
+                if (points.length < 3) return true;
+                
+                // Use first and last point to define line
+                const p1 = points[0];
+                const p2 = points[points.length - 1];
+                const lineDir = p2.clone().sub(p1);
+                const lineLen = lineDir.length();
+                
+                if (lineLen < 0.0001) return true;
+                lineDir.normalize();
+                
+                // Check all intermediate points
+                for (let i = 1; i < points.length - 1; i++) {
+                    const v = points[i].clone().sub(p1);
+                    const proj = v.dot(lineDir);
+                    const closest = p1.clone().add(lineDir.clone().multiplyScalar(proj));
+                    const dist = points[i].distanceTo(closest);
+                    
+                    if (dist > tolerance * lineLen + 0.001) {
+                        return false;
+                    }
+                }
+                
+                return true;
+            }
+            
+            // Calculate arc angles
+            function calculateArcAngles(points2D, cx, cy) {
+                const angles = points2D.map(p => Math.atan2(p.y - cy, p.x - cx));
+                
+                // Sort angles and find the sweep
+                const sortedAngles = [...angles].sort((a, b) => a - b);
+                
+                // Find largest gap (this is outside the arc)
+                let maxGap = 0;
+                let gapStart = 0;
+                for (let i = 0; i < sortedAngles.length; i++) {
+                    const next = (i + 1) % sortedAngles.length;
+                    let gap = sortedAngles[next] - sortedAngles[i];
+                    if (next === 0) gap += 2 * Math.PI;
+                    if (gap > maxGap) {
+                        maxGap = gap;
+                        gapStart = i;
+                    }
+                }
+                
+                const startAngle = sortedAngles[(gapStart + 1) % sortedAngles.length];
+                const endAngle = sortedAngles[gapStart];
+                let sweep = endAngle - startAngle;
+                if (sweep < 0) sweep += 2 * Math.PI;
+                
+                return {
+                    startAngle: startAngle * 180 / Math.PI,
+                    endAngle: endAngle * 180 / Math.PI,
+                    sweep: sweep * 180 / Math.PI
+                };
+            }
+            
+            // Main classification function - like Grasshopper's Is Arc/Circle/Ellipse
+            function classifyCurve(chain) {
+                const n = chain.length;
+                
+                // Single point or empty
+                if (n < 2) {
+                    return { type: 'polyline', points: chain, reason: 'too few points' };
+                }
+                
+                // Two points = always a line
+                if (n === 2) {
+                    const length = chain[0].distanceTo(chain[1]);
                     return { 
-                        type: 'arc', 
+                        type: 'line', 
                         points: chain,
-                        center: circle.center,
-                        radius: circle.radius
+                        length,
+                        start: chain[0],
+                        end: chain[1]
                     };
                 }
                 
-                return { type: 'line', points: chain };
+                const totalLength = chainLength(chain);
+                const closed = isChainClosed(chain);
+                
+                // Check for line first (collinearity)
+                const lineTolerance = totalLength * 0.005; // 0.5% of length
+                if (arePointsCollinear(chain, lineTolerance)) {
+                    return {
+                        type: 'line',
+                        points: chain,
+                        length: totalLength,
+                        start: chain[0],
+                        end: chain[chain.length - 1]
+                    };
+                }
+                
+                // Fit plane and project to 2D
+                const plane = fitPlane(chain);
+                if (!plane) {
+                    return { type: 'polyline', points: chain, reason: 'no plane fit' };
+                }
+                
+                // Check planarity
+                let maxPlaneDist = 0;
+                for (const p of chain) {
+                    const dist = Math.abs(p.clone().sub(plane.centroid).dot(plane.normal));
+                    maxPlaneDist = Math.max(maxPlaneDist, dist);
+                }
+                
+                const planarityTolerance = totalLength * 0.01;
+                if (maxPlaneDist > planarityTolerance) {
+                    // 3D curve - not planar
+                    return { type: 'polyline', points: chain, reason: 'non-planar', maxPlaneDist };
+                }
+                
+                // Project to 2D and fit circle
+                const projection = projectTo2D(chain, plane);
+                const circleFit = fitCircle2D(projection.points2D);
+                
+                if (!circleFit) {
+                    return { type: 'polyline', points: chain, reason: 'circle fit failed' };
+                }
+                
+                // Calculate relative error
+                const relativeError = circleFit.rmsError / circleFit.radius;
+                
+                // Threshold for accepting as circular
+                const circularThreshold = 0.02; // 2% error
+                
+                if (relativeError > circularThreshold) {
+                    // Try ellipse fit
+                    const ellipseFit = fitEllipse2D(projection.points2D);
+                    
+                    if (ellipseFit && ellipseFit.aspectRatio > 1.15) {
+                        // Significant aspect ratio - it's an ellipse
+                        const center3D = projection.centroid.clone()
+                            .add(projection.xAxis.clone().multiplyScalar(ellipseFit.cx))
+                            .add(projection.yAxis.clone().multiplyScalar(ellipseFit.cy));
+                        
+                        return {
+                            type: 'ellipse',
+                            points: chain,
+                            center: center3D,
+                            radiusX: ellipseFit.radiusX,
+                            radiusY: ellipseFit.radiusY,
+                            aspectRatio: ellipseFit.aspectRatio,
+                            normal: plane.normal,
+                            closed,
+                            error: ellipseFit.rmsError
+                        };
+                    }
+                    
+                    // Doesn't fit well - polyline
+                    return { 
+                        type: 'polyline', 
+                        points: chain, 
+                        reason: 'poor circular fit',
+                        error: relativeError
+                    };
+                }
+                
+                // Good circular fit - determine if arc or circle
+                const center3D = projection.centroid.clone()
+                    .add(projection.xAxis.clone().multiplyScalar(circleFit.cx))
+                    .add(projection.yAxis.clone().multiplyScalar(circleFit.cy));
+                
+                const angles = calculateArcAngles(projection.points2D, circleFit.cx, circleFit.cy);
+                
+                // If closed and sweep is ~360°, it's a circle
+                if (closed && angles.sweep > 350) {
+                    return {
+                        type: 'circle',
+                        points: chain,
+                        center: center3D,
+                        radius: circleFit.radius,
+                        normal: plane.normal,
+                        error: circleFit.rmsError
+                    };
+                }
+                
+                // Otherwise it's an arc
+                return {
+                    type: 'arc',
+                    points: chain,
+                    center: center3D,
+                    radius: circleFit.radius,
+                    startAngle: angles.startAngle,
+                    endAngle: angles.endAngle,
+                    sweep: angles.sweep,
+                    normal: plane.normal,
+                    closed,
+                    error: circleFit.rmsError
+                };
             }
             
             // Main Partcraft detection
@@ -680,25 +1020,35 @@
                 
                 // Step 3: Classify each chain
                 const classified = [];
-                let arcCount = 0;
-                let lineCount = 0;
-                const arcDetails = [];
+                const counts = { line: 0, arc: 0, circle: 0, ellipse: 0, polyline: 0 };
+                const curveDetails = [];
                 
                 for (let i = 0; i < chains.length; i++) {
-                    const result = classifyChain(chains[i]);
+                    const result = classifyCurve(chains[i]);
+                    counts[result.type]++;
                     
-                    if (result.type === 'arc') {
-                        arcCount++;
-                        arcDetails.push({
-                            chainIndex: i,
-                            points: result.points.length,
-                            radius: result.radius
-                        });
-                        console.log(`Chain ${i}: ARC with ${result.points.length} points, radius ${result.radius.toFixed(4)}`);
-                    } else {
-                        lineCount++;
-                        console.log(`Chain ${i}: LINE with ${result.points.length} points`);
+                    // Build detail info
+                    let detail = `#${i}: ${result.type.toUpperCase()}`;
+                    if (result.type === 'line') {
+                        detail += ` len=${result.length.toFixed(3)}"`;
+                    } else if (result.type === 'arc') {
+                        detail += ` R=${result.radius.toFixed(3)}" sweep=${result.sweep.toFixed(1)}°`;
+                    } else if (result.type === 'circle') {
+                        detail += ` R=${result.radius.toFixed(3)}"`;
+                    } else if (result.type === 'ellipse') {
+                        detail += ` Rx=${result.radiusX.toFixed(3)}" Ry=${result.radiusY.toFixed(3)}"`;
+                    } else if (result.type === 'polyline') {
+                        detail += ` (${result.reason || 'complex'})`;
                     }
+                    
+                    curveDetails.push({
+                        index: i,
+                        type: result.type,
+                        detail,
+                        ...result
+                    });
+                    
+                    console.log(`Chain ${i}: ${detail}`);
                     
                     // Convert to edge segments for rendering
                     for (let j = 0; j < result.points.length - 1; j++) {
@@ -713,9 +1063,8 @@
                 return {
                     edges: classified,
                     chains: chains.length,
-                    arcs: arcCount,
-                    lines: lineCount,
-                    arcDetails: arcDetails
+                    counts,
+                    curveDetails
                 };
             }
             
@@ -723,7 +1072,8 @@
             function detectEdgesThreeJS(geometry) {
                 const edges = getEdgesFromThreeJS(geometry);
                 return {
-                    edges: edges.map(e => ({ ...e, type: 'unknown' }))
+                    edges: edges.map(e => ({ ...e, type: 'unknown' })),
+                    counts: { unknown: edges.length }
                 };
             }
             
@@ -731,25 +1081,28 @@
                 const group = new THREE.Group();
                 
                 if (colored) {
-                    const linePositions = [];
-                    const arcPositions = [];
-                    
+                    // Group edges by type
+                    const byType = {};
                     for (const edge of edges) {
-                        const arr = edge.type === 'arc' ? arcPositions : linePositions;
-                        arr.push(edge.start.x, edge.start.y, edge.start.z);
-                        arr.push(edge.end.x, edge.end.y, edge.end.z);
+                        const type = edge.type || 'unknown';
+                        if (!byType[type]) byType[type] = [];
+                        byType[type].push(edge);
                     }
                     
-                    if (linePositions.length > 0) {
-                        const lineGeom = new THREE.BufferGeometry();
-                        lineGeom.setAttribute('position', new THREE.Float32BufferAttribute(linePositions, 3));
-                        group.add(new THREE.LineSegments(lineGeom, new THREE.LineBasicMaterial({ color: 0x00ff88 })));
-                    }
-                    
-                    if (arcPositions.length > 0) {
-                        const arcGeom = new THREE.BufferGeometry();
-                        arcGeom.setAttribute('position', new THREE.Float32BufferAttribute(arcPositions, 3));
-                        group.add(new THREE.LineSegments(arcGeom, new THREE.LineBasicMaterial({ color: 0xff69b4 })));
+                    // Create line segments for each type
+                    for (const [type, typeEdges] of Object.entries(byType)) {
+                        const positions = [];
+                        for (const edge of typeEdges) {
+                            positions.push(edge.start.x, edge.start.y, edge.start.z);
+                            positions.push(edge.end.x, edge.end.y, edge.end.z);
+                        }
+                        
+                        if (positions.length > 0) {
+                            const geom = new THREE.BufferGeometry();
+                            geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                            const color = CURVE_COLORS[type] || CURVE_COLORS.unknown;
+                            group.add(new THREE.LineSegments(geom, new THREE.LineBasicMaterial({ color })));
+                        }
                     }
                 } else {
                     const positions = [];
@@ -794,13 +1147,17 @@
                 const threejs = analysisResults.threejs;
                 const partcraft = analysisResults.partcraft;
                 
-                let arcDetailsHtml = '';
-                if (partcraft.arcDetails && partcraft.arcDetails.length > 0) {
-                    arcDetailsHtml = '<div class="arc-details"><strong>Arc Details:</strong><br>';
-                    for (const arc of partcraft.arcDetails) {
-                        arcDetailsHtml += `Chain ${arc.chainIndex}: R=${arc.radius.toFixed(4)}" (${arc.points} pts)<br>`;
+                // Build curve details HTML
+                let curveDetailsHtml = '';
+                if (partcraft.curveDetails && partcraft.curveDetails.length > 0) {
+                    curveDetailsHtml = '<div class="curve-details">';
+                    for (const curve of partcraft.curveDetails) {
+                        curveDetailsHtml += `<div class="curve-detail-item">
+                            <span class="curve-type-badge ${curve.type}">${curve.type}</span>
+                            ${curve.detail}
+                        </div>`;
                     }
-                    arcDetailsHtml += '</div>';
+                    curveDetailsHtml += '</div>';
                 }
                 
                 let facesHtml = '';
@@ -813,18 +1170,23 @@
                     facesHtml += '</div>';
                 }
                 
+                const counts = partcraft.counts;
+                
                 edgeStatsEl.innerHTML = `
                     <div style="margin-bottom: 15px;">
                         <h4 style="color: #6c63ff; margin-bottom: 10px;">Three.js Detection</h4>
                         <div class="edge-stat"><span>Total Edges:</span><span>${threejs.edges.length}</span></div>
                     </div>
                     <div style="margin-bottom: 15px;">
-                        <h4 style="color: #6c63ff; margin-bottom: 10px;">Partcraft Detection</h4>
+                        <h4 style="color: #6c63ff; margin-bottom: 10px;">Partcraft Classification</h4>
                         <div class="edge-stat"><span>Edge Chains:</span><span>${partcraft.chains}</span></div>
-                        <div class="edge-stat"><span style="color: #00ff88;">Lines:</span><span>${partcraft.lines}</span></div>
-                        <div class="edge-stat"><span style="color: #ff69b4;">Arcs:</span><span>${partcraft.arcs}</span></div>
+                        <div class="edge-stat"><span style="color: #00ff88;">Lines:</span><span>${counts.line || 0}</span></div>
+                        <div class="edge-stat"><span style="color: #ff69b4;">Arcs:</span><span>${counts.arc || 0}</span></div>
+                        <div class="edge-stat"><span style="color: #00bfff;">Circles:</span><span>${counts.circle || 0}</span></div>
+                        <div class="edge-stat"><span style="color: #ffa500;">Ellipses:</span><span>${counts.ellipse || 0}</span></div>
+                        <div class="edge-stat"><span style="color: #888;">Polylines:</span><span>${counts.polyline || 0}</span></div>
                         <div class="edge-stat"><span>Total Segments:</span><span>${partcraft.edges.length}</span></div>
-                        ${arcDetailsHtml}
+                        ${curveDetailsHtml}
                     </div>
                     <div style="border-top: 1px solid #3a3a5a; padding-top: 15px;">
                         <h4 style="color: #6c63ff; margin-bottom: 10px;">Geometry</h4>
@@ -1001,7 +1363,7 @@
                         }
                         
                         // Edge detection
-                        log('Analyzing edges...');
+                        log('Classifying curves...');
                         analysisResults = {
                             threejs: detectEdgesThreeJS(geometry),
                             partcraft: detectEdgesPartcraft(geometry),
@@ -1022,7 +1384,7 @@
                     document.getElementById('dim-z').textContent = (maxZ - minZ).toFixed(3);
                     
                     resultsEl.classList.add('show');
-                    log('✓ Analysis complete! Check console for edge chain details.');
+                    log('✓ Classification complete! Check console for curve details.');
 
                 } catch (err) {
                     log('Error: ' + err.message);
