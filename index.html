@@ -137,6 +137,7 @@
             border-radius: 8px;
             overflow: hidden;
             aspect-ratio: 4/3;
+            border: 1px solid #3a3a5a;
         }
         
         .viewer-3d canvas {
@@ -228,7 +229,7 @@
         </div>
     </div>
     
-    <div class="version">v0.0.8</div>
+    <div class="version">v0.0.10</div>
 
     <script src="https://cdn.jsdelivr.net/npm/occt-import-js@0.0.23/dist/occt-import-js.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -249,6 +250,25 @@
 
             function log(msg) {
                 statusEl.textContent = msg;
+            }
+            
+            // Helper to ensure we have a proper TypedArray
+            function toFloat32Array(arr) {
+                if (arr instanceof Float32Array) return arr;
+                const result = new Float32Array(arr.length);
+                for (let i = 0; i < arr.length; i++) {
+                    result[i] = arr[i];
+                }
+                return result;
+            }
+            
+            function toUint32Array(arr) {
+                if (arr instanceof Uint32Array) return arr;
+                const result = new Uint32Array(arr.length);
+                for (let i = 0; i < arr.length; i++) {
+                    result[i] = arr[i];
+                }
+                return result;
             }
 
             // Initialize Three.js
@@ -385,11 +405,11 @@
                 
                 // Classify edges by length consistency (arcs have many similar-length segments)
                 const lengthGroups = {};
-                const tolerance = 0.001;
+                const tolerance = 0.01; // 0.01 inch tolerance
                 
                 for (const edge of edges) {
                     const roundedLength = Math.round(edge.length / tolerance) * tolerance;
-                    const key = roundedLength.toFixed(4);
+                    const key = roundedLength.toFixed(3);
                     if (!lengthGroups[key]) {
                         lengthGroups[key] = [];
                     }
@@ -418,46 +438,6 @@
                     edges
                 };
             }
-            
-            // Try to fit a circle to a set of points
-            function fitCircle(points) {
-                if (points.length < 3) return null;
-                
-                // Use first, middle, and last points
-                const p1 = points[0];
-                const p2 = points[Math.floor(points.length / 2)];
-                const p3 = points[points.length - 1];
-                
-                // Calculate circle through 3 points (2D - project to best-fit plane first)
-                // For now, simplified: assume XY plane
-                const ax = p1.x, ay = p1.y;
-                const bx = p2.x, by = p2.y;
-                const cx = p3.x, cy = p3.y;
-                
-                const d = 2 * (ax * (by - cy) + bx * (cy - ay) + cx * (ay - by));
-                if (Math.abs(d) < 0.0001) return null; // Collinear points
-                
-                const ux = ((ax * ax + ay * ay) * (by - cy) + (bx * bx + by * by) * (cy - ay) + (cx * cx + cy * cy) * (ay - by)) / d;
-                const uy = ((ax * ax + ay * ay) * (cx - bx) + (bx * bx + by * by) * (ax - cx) + (cx * cx + cy * cy) * (bx - ax)) / d;
-                
-                const center = new THREE.Vector2(ux, uy);
-                const radius = center.distanceTo(new THREE.Vector2(ax, ay));
-                
-                // Check if all points lie on this circle
-                let maxError = 0;
-                for (const p of points) {
-                    const dist = center.distanceTo(new THREE.Vector2(p.x, p.y));
-                    const error = Math.abs(dist - radius);
-                    maxError = Math.max(maxError, error);
-                }
-                
-                return {
-                    center,
-                    radius,
-                    maxError,
-                    isArc: maxError < radius * 0.01 // Within 1% tolerance
-                };
-            }
 
             async function processFile(file) {
                 log('Reading: ' + file.name);
@@ -477,10 +457,12 @@
                     
                     console.log('STEP Result:', result);
                     
-                    // Get part name
+                    // Get part name from mesh or root
                     let partName = file.name.replace(/\.(stp|step)$/i, '');
-                    if (result.root && result.root.name) {
-                        partName = result.root.name;
+                    if (result.meshes[0] && result.meshes[0].name) {
+                        partName = result.meshes[0].name;
+                    } else if (result.root && result.root.children && result.root.children[0] && result.root.children[0].name) {
+                        partName = result.root.children[0].name;
                     }
                     
                     // Build Three.js geometry from meshes
@@ -505,8 +487,9 @@
                     for (const meshData of result.meshes) {
                         const geometry = new THREE.BufferGeometry();
                         
-                        // Positions
-                        const positions = meshData.attributes.position.array;
+                        // Convert to TypedArrays using helper functions
+                        const posArray = meshData.attributes.position.array;
+                        const positions = toFloat32Array(posArray);
                         geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
                         
                         // Update bounding box
@@ -520,15 +503,17 @@
                         }
                         
                         // Normals
-                        if (meshData.attributes.normal) {
-                            geometry.setAttribute('normal', new THREE.Float32BufferAttribute(meshData.attributes.normal.array, 3));
+                        if (meshData.attributes.normal && meshData.attributes.normal.array) {
+                            const normals = toFloat32Array(meshData.attributes.normal.array);
+                            geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
                         } else {
                             geometry.computeVertexNormals();
                         }
                         
                         // Indices
-                        if (meshData.index) {
-                            geometry.setIndex(new THREE.BufferAttribute(meshData.index.array, 1));
+                        if (meshData.index && meshData.index.array) {
+                            const indices = toUint32Array(meshData.index.array);
+                            geometry.setIndex(new THREE.Uint32BufferAttribute(indices, 1));
                         }
                         
                         totalVertices += positions.length / 3;
@@ -561,11 +546,10 @@
                     
                     fitCameraToObject(group);
                     
-                    // Convert to inches (library returns mm)
-                    const scale = 1 / 25.4;
-                    const width = (maxX - minX) * scale;
-                    const height = (maxY - minY) * scale;
-                    const depth = (maxZ - minZ) * scale;
+                    // Dimensions (already in inches from linearUnit param)
+                    const width = maxX - minX;
+                    const height = maxY - minY;
+                    const depth = maxZ - minZ;
                     
                     // Update UI
                     document.getElementById('part-name').textContent = partName;
@@ -580,10 +564,13 @@
                         <div class="edge-stat"><span>Straight Edges:</span><span>${allEdgeStats.straightEdges}</span></div>
                         <div class="edge-stat"><span>Vertices:</span><span>${totalVertices}</span></div>
                         <div class="edge-stat"><span>Triangles:</span><span>${totalTriangles}</span></div>
+                        <div class="edge-stat"><span>B-Rep Faces:</span><span>${result.meshes[0].brep_faces ? result.meshes[0].brep_faces.length : 0}</span></div>
                         <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #3a3a5a;">
                             <h4 style="color: #6c63ff; margin-bottom: 10px;">Bounding Box (inches)</h4>
-                            <div class="edge-stat"><span>Min:</span><span>(${(minX*scale).toFixed(3)}, ${(minY*scale).toFixed(3)}, ${(minZ*scale).toFixed(3)})</span></div>
-                            <div class="edge-stat"><span>Max:</span><span>(${(maxX*scale).toFixed(3)}, ${(maxY*scale).toFixed(3)}, ${(maxZ*scale).toFixed(3)})</span></div>
+                            <div class="edge-stat"><span>X:</span><span>${minX.toFixed(3)} → ${maxX.toFixed(3)}</span></div>
+                            <div class="edge-stat"><span>Y:</span><span>${minY.toFixed(3)} → ${maxY.toFixed(3)}</span></div>
+                            <div class="edge-stat"><span>Z:</span><span>${minZ.toFixed(3)} → ${maxZ.toFixed(3)}</span></div>
+                            <div class="edge-stat"><span>Size:</span><span>${width.toFixed(3)} × ${height.toFixed(3)} × ${depth.toFixed(3)}</span></div>
                         </div>
                     `;
                     
