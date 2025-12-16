@@ -138,7 +138,7 @@
             </div>
         </div>
     </div>
-    <div class="version">v0.0.15</div>
+    <div class="version">v0.0.16</div>
 
     <script src="https://cdn.jsdelivr.net/npm/occt-import-js@0.0.23/dist/occt-import-js.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -444,6 +444,7 @@
             
             // For 3+ non-collinear points, test for arc/circle
             const curveLength = totalLength(points);
+            const chordLength = vecDist(points[0], points[n - 1]); // straight line distance start to end
             const closed = isClosed(points);
             
             // Step 1: Fit plane
@@ -476,16 +477,27 @@
                 return { type: 'polyline', points, reason: 'poor fit', error: relativeError };
             }
             
-            // Step 5: Calculate 3D center
+            // Step 5: SANITY CHECK - Chord to radius ratio
+            // For real arcs, chord/radius should be reasonable (> 0.1)
+            // A straight line misclassified as arc will have huge radius relative to chord
+            // Exception: closed curves (circles) where chord ≈ 0
+            const chordToRadius = chordLength / circleFit.radius;
+            
+            if (!closed && chordToRadius < 0.1) {
+                // Radius is way too large relative to chord - this is a line
+                return { type: 'line', points, length: curveLength };
+            }
+            
+            // Step 6: Calculate 3D center
             const center = vecAdd(
                 vecAdd(plane.centroid, vecScale(xAxis, circleFit.cx)),
                 vecScale(yAxis, circleFit.cy)
             );
             
-            // Step 6: Calculate arc angles
+            // Step 7: Calculate arc angles
             const { startAngle, endAngle, sweep } = calculateArcAngles(points2D, circleFit.cx, circleFit.cy);
             
-            // Step 7: Determine if circle or arc
+            // Step 8: Determine if circle or arc
             const isFullCircle = (closed && sweep > 300) || sweep > 350;
             
             if (isFullCircle) {
