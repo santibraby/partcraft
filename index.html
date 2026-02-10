@@ -1,0 +1,1899 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Partcraft - STEP Drawing Generator</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { text-align: center; margin-bottom: 8px; font-weight: 600; font-size: 24px; }
+        .subtitle { text-align: center; color: #888; margin-bottom: 24px; font-size: 14px; }
+        .version { position: fixed; bottom: 10px; right: 10px; font-size: 11px; color: #555; font-family: monospace; }
+        #status {
+            padding: 15px; background: #2a2a4a; border-radius: 8px; margin-bottom: 20px;
+            font-family: monospace; font-size: 13px; white-space: pre-wrap; min-height: 40px;
+        }
+        .upload-area {
+            border: 2px dashed #4a4a6a; border-radius: 12px; padding: 40px;
+            text-align: center; margin-bottom: 20px; cursor: pointer; transition: all 0.3s;
+        }
+        .upload-area:hover, .upload-area.dragover { border-color: #6c63ff; background: rgba(108, 99, 255, 0.1); }
+        .upload-area.disabled { opacity: 0.5; cursor: not-allowed; }
+        .upload-area.hidden { display: none; }
+        .upload-area input { display: none; }
+        .upload-icon { font-size: 48px; margin-bottom: 10px; }
+        .results { display: none; }
+        .results.show { display: block; }
+        .info-bar {
+            display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 20px;
+            padding: 15px; background: #2a2a4a; border-radius: 8px; align-items: center;
+        }
+        .info-item { display: flex; flex-direction: column; }
+        .info-item label { font-size: 10px; text-transform: uppercase; color: #888; letter-spacing: 1px; }
+        .info-item .value { font-size: 18px; font-weight: 600; }
+        .controls {
+            display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 20px;
+            padding: 15px; background: #2a2a4a; border-radius: 8px; align-items: flex-end;
+        }
+        .toggle-group { display: flex; flex-direction: column; gap: 5px; }
+        .toggle-group label { font-size: 10px; text-transform: uppercase; color: #888; letter-spacing: 1px; }
+        .toggle-buttons { display: flex; gap: 5px; }
+        .toggle-btn {
+            padding: 8px 12px; border: 1px solid #4a4a6a; background: transparent;
+            color: #888; border-radius: 4px; cursor: pointer; font-size: 12px; transition: all 0.2s;
+        }
+        .toggle-btn.active { background: #6c63ff; border-color: #6c63ff; color: white; }
+        .toggle-btn:hover:not(.active) { border-color: #6c63ff; color: #fff; }
+        .color-legend { display: flex; gap: 15px; align-items: center; margin-left: auto; font-size: 12px; flex-wrap: wrap; }
+        .legend-item { display: flex; align-items: center; gap: 5px; }
+        .legend-color { width: 20px; height: 3px; border-radius: 2px; }
+        .legend-color.line { background: #00ffff; }
+        .legend-color.arc { background: #ff00ff; }
+        .legend-color.circle { background: #ffff00; }
+        .viewer-container { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+        @media (max-width: 900px) { .viewer-container { grid-template-columns: 1fr; } }
+        .viewer-3d {
+            background: #1a1a2e; border-radius: 8px; overflow: hidden;
+            aspect-ratio: 4/3; border: 1px solid #3a3a5a;
+        }
+        .viewer-3d canvas { width: 100% !important; height: 100% !important; }
+        .edge-info {
+            background: #2a2a4a; border-radius: 8px; padding: 15px;
+            font-family: monospace; font-size: 12px; max-height: 500px; overflow: auto;
+        }
+        .edge-info h4 { color: #6c63ff; margin-bottom: 10px; }
+        .edge-stat { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #3a3a5a; }
+        .face-color-box { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: 5px; vertical-align: middle; }
+        .new-file-btn { background: #6c63ff; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+        .new-file-btn:hover { background: #5b54d6; }
+        .curve-details { font-size: 10px; color: #888; margin-top: 10px; max-height: 200px; overflow-y: auto; }
+        .curve-detail-item { padding: 4px 0; border-bottom: 1px dashed #3a3a5a; }
+        .curve-type-badge { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 9px; font-weight: bold; margin-right: 5px; }
+        .curve-type-badge.line { background: #00ffff; color: #000; }
+        .curve-type-badge.arc { background: #ff00ff; color: #000; }
+        .curve-type-badge.circle { background: #ffff00; color: #000; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Partcraft</h1>
+        <p class="subtitle">STEP Drawing Generator</p>
+        <div id="status">Initializing...</div>
+        <div class="upload-area disabled" id="upload-area">
+            <div class="upload-icon">📁</div>
+            <p>Drop a STEP file here or click to upload</p>
+            <p style="font-size: 12px; color: #888; margin-top: 8px;">.stp or .step files</p>
+            <input type="file" id="file-input" accept=".stp,.step">
+        </div>
+        <div class="results" id="results">
+            <div class="info-bar">
+                <div class="info-item"><label>Part Name</label><div class="value" id="part-name">-</div></div>
+                <div class="info-item"><label>X (Width)</label><div class="value"><span id="dim-x">-</span>"</div></div>
+                <div class="info-item"><label>Y (Height)</label><div class="value"><span id="dim-y">-</span>"</div></div>
+                <div class="info-item"><label>Z (Depth)</label><div class="value"><span id="dim-z">-</span>"</div></div>
+                <div class="info-item"><button class="new-file-btn" id="new-file-btn">New File</button></div>
+            </div>
+            <div class="controls">
+                <div class="toggle-group">
+                    <label>View</label>
+                    <div class="toggle-buttons">
+                        <button class="toggle-btn" id="btn-top">Top</button>
+                        <button class="toggle-btn" id="btn-front">Front</button>
+                        <button class="toggle-btn" id="btn-left">Left</button>
+                        <button class="toggle-btn" id="btn-right">Right</button>
+                        <button class="toggle-btn active" id="btn-axon">Axon</button>
+                    </div>
+                </div>
+                <div class="toggle-group">
+                    <label>Edge Colors</label>
+                    <div class="toggle-buttons">
+                        <button class="toggle-btn active" id="btn-black">Black</button>
+                        <button class="toggle-btn" id="btn-classified">Classified</button>
+                        <button class="toggle-btn" id="btn-random-edges">Random</button>
+                    </div>
+                </div>
+                <div class="toggle-group">
+                    <label>Face Colors</label>
+                    <div class="toggle-buttons">
+                        <button class="toggle-btn active" id="btn-solid">Solid</button>
+                        <button class="toggle-btn" id="btn-random">Random</button>
+                    </div>
+                </div>
+                <div class="toggle-group">
+                    <label>Mesh Wires</label>
+                    <div class="toggle-buttons">
+                        <button class="toggle-btn active" id="btn-wires-off">Off</button>
+                        <button class="toggle-btn" id="btn-wires-on">On</button>
+                    </div>
+                </div>
+                <div class="toggle-group">
+                    <label>Annotations</label>
+                    <div class="toggle-buttons">
+                        <button class="toggle-btn active" id="btn-annotations-off">Off</button>
+                        <button class="toggle-btn" id="btn-annotations-1">L1</button>
+                        <button class="toggle-btn" id="btn-annotations-2">L2</button>
+                        <button class="toggle-btn" id="btn-annotations-3">L3</button>
+                    </div>
+                </div>
+                <div class="toggle-group">
+                    <label>XYZ Axes</label>
+                    <div class="toggle-buttons">
+                        <button class="toggle-btn" id="btn-axes-off">Off</button>
+                        <button class="toggle-btn active" id="btn-axes-on">On</button>
+                    </div>
+                </div>
+                <div class="color-legend" id="color-legend" style="display: none;">
+                    <div class="legend-item"><div class="legend-color line"></div><span>Lines</span></div>
+                    <div class="legend-item"><div class="legend-color arc"></div><span>Arcs</span></div>
+                    <div class="legend-item"><div class="legend-color circle"></div><span>Circles</span></div>
+                </div>
+            </div>
+            <div class="viewer-container">
+                <div class="viewer-3d" id="viewer-3d"></div>
+                <div class="edge-info" id="edge-info"><h4>Edge Analysis</h4><div id="edge-stats"></div></div>
+            </div>
+        </div>
+    </div>
+    <div class="version">v0.0.46</div>
+
+    <script src="https://cdn.jsdelivr.net/npm/occt-import-js@0.0.23/dist/occt-import-js.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script>
+    (async function() {
+        const statusEl = document.getElementById('status');
+        const uploadArea = document.getElementById('upload-area');
+        const fileInput = document.getElementById('file-input');
+        const resultsEl = document.getElementById('results');
+        const viewerEl = document.getElementById('viewer-3d');
+        const edgeStatsEl = document.getElementById('edge-stats');
+        const newFileBtn = document.getElementById('new-file-btn');
+        const colorLegend = document.getElementById('color-legend');
+
+        let occt = null;
+        let scene, camera, orthoCamera, renderer, controls;
+        let currentGroup = null;
+        let meshObjects = { solid: null, random: null, geometry: null };
+        let edgeObjects = { current: null };
+        let analysisResults = null;
+        let faceColors = [];
+        let modelCenter = new THREE.Vector3();
+        let modelSize = 1;
+        
+        let colorMode = 'black';
+        let faceMode = 'solid';
+        let wireMode = false;
+        let currentView = 'axon';
+        let annotationGroup = null;
+        let axesHelper = null;
+        let annotationLevel = 0;  // 0=off, 1=overall only, 2=overall+centers, 3=all features
+        let axesOn = true;
+
+        const CURVE_COLORS = { line: 0x00ffff, arc: 0xff00ff, circle: 0xffff00, unknown: 0x000000 };
+
+        function log(msg) { statusEl.textContent = msg; }
+        function toFloat32Array(arr) { return arr instanceof Float32Array ? arr : new Float32Array(arr); }
+        function toUint32Array(arr) { return arr instanceof Uint32Array ? arr : new Uint32Array(arr); }
+        
+        function generateDistinctColors(count) {
+            const colors = [];
+            for (let i = 0; i < count; i++) {
+                colors.push({ h: (i * 137.508) % 360, s: 70 + (i % 3) * 10, l: 50 + (i % 2) * 15 });
+            }
+            return colors;
+        }
+        
+        function hslToHex(h, s, l) {
+            s /= 100; l /= 100;
+            const a = s * Math.min(l, 1 - l);
+            const f = n => { const k = (n + h / 30) % 12; return Math.round(255 * (l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1))).toString(16).padStart(2, '0'); };
+            return `#${f(0)}${f(8)}${f(4)}`;
+        }
+
+        function initThreeJS() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1a1a2e);
+            const width = viewerEl.clientWidth, height = viewerEl.clientHeight;
+            const aspect = width / height;
+            
+            // Perspective camera (kept for reference but not used)
+            camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 10000);
+            camera.position.set(50, 50, 50);
+            
+            // Orthographic camera (used for all views)
+            const frustumSize = 100;
+            orthoCamera = new THREE.OrthographicCamera(
+                -frustumSize * aspect / 2, frustumSize * aspect / 2,
+                frustumSize / 2, -frustumSize / 2,
+                0.1, 10000
+            );
+            orthoCamera.position.set(50, 50, 50);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            viewerEl.appendChild(renderer.domElement);
+            controls = new THREE.OrbitControls(orthoCamera, renderer.domElement);
+            controls.enableDamping = true;
+            scene.add(new THREE.AmbientLight(0x404040, 0.5));
+            const light1 = new THREE.DirectionalLight(0xffffff, 0.8);
+            light1.position.set(50, 100, 50);
+            scene.add(light1);
+            const light2 = new THREE.DirectionalLight(0xffffff, 0.4);
+            light2.position.set(-50, -50, -50);
+            scene.add(light2);
+            animate();
+        }
+        
+        function getActiveCamera() {
+            return orthoCamera;
+        }
+        
+        function setView(viewName) {
+            currentView = viewName;
+            const distance = modelSize * 2;
+            
+            // Update orthographic camera frustum based on model size
+            const aspect = viewerEl.clientWidth / viewerEl.clientHeight;
+            const frustumSize = modelSize * 0.65; // Smaller = larger model on screen
+            orthoCamera.left = -frustumSize * aspect;
+            orthoCamera.right = frustumSize * aspect;
+            orthoCamera.top = frustumSize;
+            orthoCamera.bottom = -frustumSize;
+            orthoCamera.updateProjectionMatrix();
+            
+            // Set camera position based on view
+            switch(viewName) {
+                case 'top':
+                    orthoCamera.position.set(modelCenter.x, modelCenter.y + distance, modelCenter.z);
+                    orthoCamera.up.set(0, 0, -1);
+                    break;
+                case 'front':
+                    orthoCamera.position.set(modelCenter.x, modelCenter.y, modelCenter.z + distance);
+                    orthoCamera.up.set(0, 1, 0);
+                    break;
+                case 'left':
+                    orthoCamera.position.set(modelCenter.x - distance, modelCenter.y, modelCenter.z);
+                    orthoCamera.up.set(0, 1, 0);
+                    break;
+                case 'right':
+                    orthoCamera.position.set(modelCenter.x + distance, modelCenter.y, modelCenter.z);
+                    orthoCamera.up.set(0, 1, 0);
+                    break;
+                case 'axon':
+                    // Isometric-style orthographic view
+                    orthoCamera.position.set(
+                        modelCenter.x + distance,
+                        modelCenter.y + distance,
+                        modelCenter.z + distance
+                    );
+                    orthoCamera.up.set(0, 1, 0);
+                    break;
+            }
+            
+            orthoCamera.lookAt(modelCenter);
+            controls.object = orthoCamera;
+            controls.target.copy(modelCenter);
+            controls.update();
+            
+            // Update axes helper position
+            if (axesHelper) createAxesHelper();
+        }
+        
+        function updateViewButtons(viewName) {
+            document.querySelectorAll('#btn-top, #btn-front, #btn-left, #btn-right, #btn-axon').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.getElementById('btn-' + viewName).classList.add('active');
+        }
+        
+        function animate() { requestAnimationFrame(animate); controls.update(); renderer.render(scene, getActiveCamera()); }
+        
+        function fitCameraToObject(object) {
+            const box = new THREE.Box3().setFromObject(object);
+            const center = box.getCenter(new THREE.Vector3());
+            const size = box.getSize(new THREE.Vector3());
+            const maxDim = Math.max(size.x, size.y, size.z);
+            
+            // Store for view switching
+            modelCenter.copy(center);
+            modelSize = maxDim;
+            
+            // Reset to axonometric view
+            currentView = 'axon';
+            updateViewButtons('axon');
+            setView('axon');
+            
+            // Create/update axes helper
+            createAxesHelper();
+        }
+        
+        function createAxesHelper() {
+            // Remove existing
+            if (axesHelper) {
+                scene.remove(axesHelper);
+                axesHelper = null;
+            }
+            
+            // Don't create if toggle is off
+            if (!axesOn) return;
+            
+            // Create axes group
+            axesHelper = new THREE.Group();
+            
+            const axisLength = modelSize * 0.15;
+            const origin = new THREE.Vector3(
+                modelCenter.x - modelSize * 0.6,
+                modelCenter.y - modelSize * 0.5,
+                modelCenter.z + modelSize * 0.6
+            );
+            
+            // X axis - Red
+            const xGeom = new THREE.BufferGeometry().setFromPoints([
+                origin,
+                new THREE.Vector3(origin.x + axisLength, origin.y, origin.z)
+            ]);
+            const xAxis = new THREE.Line(xGeom, new THREE.LineBasicMaterial({ color: 0xff0000, linewidth: 2 }));
+            axesHelper.add(xAxis);
+            
+            // X label
+            const xLabel = createAxisLabel('X', new THREE.Vector3(origin.x + axisLength + 0.5, origin.y, origin.z), 0xff0000);
+            axesHelper.add(xLabel);
+            
+            // Y axis - Green
+            const yGeom = new THREE.BufferGeometry().setFromPoints([
+                origin,
+                new THREE.Vector3(origin.x, origin.y + axisLength, origin.z)
+            ]);
+            const yAxis = new THREE.Line(yGeom, new THREE.LineBasicMaterial({ color: 0x00ff00, linewidth: 2 }));
+            axesHelper.add(yAxis);
+            
+            // Y label
+            const yLabel = createAxisLabel('Y', new THREE.Vector3(origin.x, origin.y + axisLength + 0.5, origin.z), 0x00ff00);
+            axesHelper.add(yLabel);
+            
+            // Z axis - Blue
+            const zGeom = new THREE.BufferGeometry().setFromPoints([
+                origin,
+                new THREE.Vector3(origin.x, origin.y, origin.z - axisLength)
+            ]);
+            const zAxis = new THREE.Line(zGeom, new THREE.LineBasicMaterial({ color: 0x0088ff, linewidth: 2 }));
+            axesHelper.add(zAxis);
+            
+            // Z label
+            const zLabel = createAxisLabel('Z', new THREE.Vector3(origin.x, origin.y, origin.z - axisLength - 0.5), 0x0088ff);
+            axesHelper.add(zLabel);
+            
+            scene.add(axesHelper);
+        }
+        
+        function createAxisLabel(text, position, color) {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = 64;
+            canvas.height = 64;
+            
+            ctx.fillStyle = '#' + color.toString(16).padStart(6, '0');
+            ctx.font = 'bold 48px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, 32, 32);
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            const material = new THREE.SpriteMaterial({ map: texture });
+            const sprite = new THREE.Sprite(material);
+            sprite.position.copy(position);
+            sprite.scale.set(1.5, 1.5, 1);
+            
+            return sprite;
+        }
+
+        // ============================================
+        // SIMPLIFIED CURVE CLASSIFICATION
+        // Only: LINE, ARC, CIRCLE
+        // 
+        // Method (from perpendicular bisector approach):
+        // 1. < 3 points → LINE
+        // 2. ≥ 3 points → Use 3 points to define a circle
+        //    - Find midpoints of chords AB and BC
+        //    - Find perpendicular bisectors
+        //    - Intersection = center (h, k)
+        //    - Radius = distance from center to any point
+        //    - Check if ALL points are equidistant from center
+        //    - If yes + closed → CIRCLE
+        //    - If yes + open → ARC  
+        //    - If no → LINE
+        // ============================================
+
+        // 2D Vector helpers
+        function vec2(x, y) { return { x, y }; }
+        function v2sub(a, b) { return vec2(a.x - b.x, a.y - b.y); }
+        function v2add(a, b) { return vec2(a.x + b.x, a.y + b.y); }
+        function v2scale(v, s) { return vec2(v.x * s, v.y * s); }
+        function v2len(v) { return Math.sqrt(v.x * v.x + v.y * v.y); }
+        function v2dist(a, b) { return v2len(v2sub(a, b)); }
+
+        // 3D Vector helpers
+        function vec3(x, y, z) { return { x, y, z }; }
+        function v3sub(a, b) { return vec3(a.x - b.x, a.y - b.y, a.z - b.z); }
+        function v3add(a, b) { return vec3(a.x + b.x, a.y + b.y, a.z + b.z); }
+        function v3scale(v, s) { return vec3(v.x * s, v.y * s, v.z * s); }
+        function v3dot(a, b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
+        function v3cross(a, b) { return vec3(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x); }
+        function v3len(v) { return Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z); }
+        function v3norm(v) { const l = v3len(v); return l > 1e-10 ? v3scale(v, 1/l) : vec3(0,0,0); }
+        function v3dist(a, b) { return v3len(v3sub(a, b)); }
+
+        /**
+         * Calculate circle from 3 points using perpendicular bisectors
+         * 
+         * Steps:
+         * 1. Project 3D points to 2D plane
+         * 2. Find midpoint of chord AB and chord BC
+         * 3. Find perpendicular direction for each chord
+         * 4. Intersect the two perpendicular bisectors → center (h, k)
+         * 5. Radius = distance from center to any of the 3 points
+         * 6. Convert center back to 3D
+         */
+        function circleFrom3Points(A, B, C) {
+            // Check if points are collinear (cross product ≈ 0)
+            const AB = v3sub(B, A);
+            const AC = v3sub(C, A);
+            const normal = v3cross(AB, AC);
+            const normalLen = v3len(normal);
+            
+            // Check if sin(angle) between AB and AC is very small
+            // sin(angle) = |AB x AC| / (|AB| * |AC|)
+            const abLen = v3len(AB);
+            const acLen = v3len(AC);
+            
+            if (abLen < 1e-10 || acLen < 1e-10) {
+                return null; // Degenerate case
+            }
+            
+            const sinAngle = normalLen / (abLen * acLen);
+            
+            if (sinAngle < 0.05) { // Less than ~3 degrees = collinear
+                return null;
+            }
+            
+            // Create 2D coordinate system on the plane of ABC
+            const unitNormal = v3scale(normal, 1 / normalLen);
+            const xAxis = v3norm(AB);
+            const yAxis = v3cross(unitNormal, xAxis);
+            
+            // Project points to 2D (A becomes origin)
+            function to2D(P) {
+                const rel = v3sub(P, A);
+                return vec2(v3dot(rel, xAxis), v3dot(rel, yAxis));
+            }
+            
+            const a = to2D(A); // (0, 0)
+            const b = to2D(B);
+            const c = to2D(C);
+            
+            // Midpoint of AB
+            const midAB = vec2((a.x + b.x) / 2, (a.y + b.y) / 2);
+            
+            // Midpoint of BC  
+            const midBC = vec2((b.x + c.x) / 2, (b.y + c.y) / 2);
+            
+            // Direction of AB, then rotate 90° for perpendicular
+            const dirAB = v2sub(b, a);
+            const perpAB = vec2(-dirAB.y, dirAB.x);
+            
+            // Direction of BC, then rotate 90° for perpendicular
+            const dirBC = v2sub(c, b);
+            const perpBC = vec2(-dirBC.y, dirBC.x);
+            
+            // Find intersection of perpendicular bisectors
+            // Line 1: midAB + t * perpAB
+            // Line 2: midBC + s * perpBC
+            const denom = perpAB.x * perpBC.y - perpAB.y * perpBC.x;
+            
+            if (Math.abs(denom) < 1e-10) {
+                return null; // Parallel lines (shouldn't happen)
+            }
+            
+            const diff = v2sub(midBC, midAB);
+            const t = (diff.x * perpBC.y - diff.y * perpBC.x) / denom;
+            
+            // Center in 2D
+            const h = midAB.x + t * perpAB.x;
+            const k = midAB.y + t * perpAB.y;
+            
+            // Radius = distance from center to point A
+            const radius = Math.sqrt(h * h + k * k); // Since a = (0,0)
+            
+            // Convert center back to 3D
+            const center3D = v3add(A, v3add(v3scale(xAxis, h), v3scale(yAxis, k)));
+            
+            return { center: center3D, radius, normal: unitNormal };
+        }
+
+        // Check if point is equidistant from center (lies on circle)
+        function pointOnCircle(point, center, radius, tolerance) {
+            const dist = v3dist(point, center);
+            return Math.abs(dist - radius) <= tolerance;
+        }
+
+        // Check if curve is closed
+        function isClosed(points) {
+            if (points.length < 3) return false;
+            return v3dist(points[0], points[points.length - 1]) < 0.05;
+        }
+
+        // Calculate total length
+        function totalLength(points) {
+            let len = 0;
+            for (let i = 0; i < points.length - 1; i++) {
+                len += v3dist(points[i], points[i + 1]);
+            }
+            return len;
+        }
+
+        // Calculate arc sweep angle
+        function calculateSweep(points, center, normal) {
+            if (points.length < 2) return 0;
+            
+            const toFirst = v3norm(v3sub(points[0], center));
+            const yAxis = v3cross(normal, toFirst);
+            
+            const toLast = v3sub(points[points.length - 1], center);
+            const x = v3dot(toLast, toFirst);
+            const y = v3dot(toLast, yAxis);
+            let angle = Math.atan2(y, x) * 180 / Math.PI;
+            
+            if (angle < 0) angle += 360;
+            
+            // Check direction using midpoint
+            if (points.length > 2) {
+                const midIdx = Math.floor(points.length / 2);
+                const toMid = v3sub(points[midIdx], center);
+                const mx = v3dot(toMid, toFirst);
+                const my = v3dot(toMid, yAxis);
+                const midAngle = Math.atan2(my, mx) * 180 / Math.PI;
+                const normMidAngle = midAngle < 0 ? midAngle + 360 : midAngle;
+                
+                if (normMidAngle > angle + 10) {
+                    angle = 360 - angle;
+                }
+            }
+            
+            return angle;
+        }
+
+        // Main classification function
+        function classifyCurve(points) {
+            const n = points.length;
+            
+            // RULE 1: < 3 points → LINE
+            if (n < 3) {
+                return { type: 'line', points, length: n === 2 ? v3dist(points[0], points[1]) : 0, numPoints: n };
+            }
+            
+            // Calculate all segment lengths first
+            const segLengths = [];
+            let totalLen = 0;
+            let maxSegLen = 0;
+            
+            for (let i = 0; i < n - 1; i++) {
+                const len = v3dist(points[i], points[i + 1]);
+                segLengths.push(len);
+                totalLen += len;
+                if (len > maxSegLen) maxSegLen = len;
+            }
+            
+            const avgSegLen = totalLen / segLengths.length;
+            
+            // Check if chain is closed - relative to average segment
+            const gap = v3dist(points[0], points[n - 1]);
+            const closed = gap < avgSegLen * 2;
+            
+            // Calculate angles
+            const angles = [];
+            let maxAngle = 0;
+            
+            for (let i = 1; i < n - 1; i++) {
+                const v1 = v3sub(points[i], points[i - 1]);
+                const v2 = v3sub(points[i + 1], points[i]);
+                const angle = angleBetween(v1, v2);
+                angles.push(angle);
+                if (angle > maxAngle) maxAngle = angle;
+            }
+            
+            // CIRCLE DETECTION:
+            // 1. Chain is closed (gap < 2x avgSeg)
+            // 2. More than 8 edges (9+ points)
+            // 3. Segments are consistent (maxSeg < 3x avgSeg or < 1")
+            // 4. No angle > 25° (smooth curve)
+            const segConsistent = maxSegLen < Math.max(avgSegLen * 3, 1.0);
+            
+            console.log(`  Circle check: closed=${closed}(gap=${gap.toFixed(4)}", avgSeg=${avgSegLen.toFixed(4)}"), pts=${n}, maxSeg=${maxSegLen.toFixed(3)}", maxAngle=${maxAngle.toFixed(1)}°, consistent=${segConsistent}`);
+            
+            const isCircle = closed && 
+                             n > 8 && 
+                             segConsistent && 
+                             maxAngle < 25;
+            
+            if (isCircle) {
+                // Calculate radius from circle fit
+                const p1 = points[0];
+                const p2 = points[Math.floor(n / 3)];
+                const p3 = points[Math.floor(n * 2 / 3)];
+                const circle = circleFrom3Points(p1, p2, p3);
+                
+                console.log(`  → CIRCLE detected: ${n} pts, R=${circle ? circle.radius.toFixed(3) : '?'}"`);
+                
+                return {
+                    type: 'circle',
+                    points,
+                    center: circle ? circle.center : points[0],
+                    radius: circle ? circle.radius : totalLen / (2 * Math.PI),
+                    normal: circle ? circle.normal : vec3(0, 0, 1),
+                    numPoints: n
+                };
+            }
+            
+            // ARC DETECTION:
+            // Use 3 points to define circle, check if all points fit
+            const p1 = points[0];
+            const p2 = points[Math.floor(n / 2)];
+            const p3 = points[n - 1];
+            
+            const circle = circleFrom3Points(p1, p2, p3);
+            
+            // If collinear → LINE
+            if (!circle) {
+                console.log(`  → Collinear points, classifying as LINE`);
+                return { type: 'line', points, length: totalLength(points), numPoints: n };
+            }
+            
+            // Check if ALL points are equidistant from center
+            const tolerance = Math.max(circle.radius * 0.10, 0.005);
+            
+            let maxError = 0;
+            let failedPoint = -1;
+            for (let i = 0; i < n; i++) {
+                const dist = v3dist(points[i], circle.center);
+                const error = Math.abs(dist - circle.radius);
+                if (error > maxError) {
+                    maxError = error;
+                }
+                if (error > tolerance) {
+                    failedPoint = i;
+                    break;
+                }
+            }
+            
+            // If not all points equidistant from center → LINE
+            if (failedPoint >= 0) {
+                console.log(`  → Circle fit failed at point ${failedPoint}, error=${maxError.toFixed(4)}" > tolerance=${tolerance.toFixed(4)}", R=${circle.radius.toFixed(3)}"`);
+                return { type: 'line', points, length: totalLength(points), numPoints: n };
+            }
+            
+            // All points are on the circle → ARC
+            console.log(`  → ARC detected: R=${circle.radius.toFixed(3)}", maxError=${maxError.toFixed(4)}"`);
+            
+            return {
+                type: 'arc',
+                points,
+                center: circle.center,
+                radius: circle.radius,
+                normal: circle.normal,
+                sweep: calculateSweep(points, circle.center, circle.normal),
+                numPoints: n
+            };
+        }
+
+        // Get raw edges from Three.js
+        function getEdgesFromThreeJS(geometry) {
+            const edgesGeometry = new THREE.EdgesGeometry(geometry, 30);
+            const positions = edgesGeometry.attributes.position.array;
+            const edges = [];
+            for (let i = 0; i < positions.length; i += 6) {
+                edges.push({
+                    start: vec3(positions[i], positions[i+1], positions[i+2]),
+                    end: vec3(positions[i+3], positions[i+4], positions[i+5])
+                });
+            }
+            return edges;
+        }
+
+        // Chain edges into continuous polylines, then split at corners
+        function chainEdges(edges) {
+            const tolerance = 0.001;
+            const used = new Array(edges.length).fill(false);
+            const rawChains = [];
+            
+            function pointsEqual(p1, p2) { return v3dist(p1, p2) < tolerance; }
+            
+            function findConnecting(point) {
+                for (let i = 0; i < edges.length; i++) {
+                    if (used[i]) continue;
+                    if (pointsEqual(edges[i].start, point)) return { idx: i, reverse: false };
+                    if (pointsEqual(edges[i].end, point)) return { idx: i, reverse: true };
+                }
+                return null;
+            }
+            
+            // Step 1: Build raw chains (connect all touching edges)
+            for (let i = 0; i < edges.length; i++) {
+                if (used[i]) continue;
+                
+                const chain = [edges[i].start, edges[i].end];
+                used[i] = true;
+                
+                let found;
+                while ((found = findConnecting(chain[chain.length - 1]))) {
+                    used[found.idx] = true;
+                    chain.push(found.reverse ? edges[found.idx].start : edges[found.idx].end);
+                }
+                while ((found = findConnecting(chain[0]))) {
+                    used[found.idx] = true;
+                    chain.unshift(found.reverse ? edges[found.idx].start : edges[found.idx].end);
+                }
+                
+                rawChains.push(chain);
+            }
+            
+            // Step 2: Split chains at corners
+            const finalChains = [];
+            
+            for (let rc = 0; rc < rawChains.length; rc++) {
+                const chain = rawChains[rc];
+                if (chain.length <= 2) {
+                    finalChains.push(chain);
+                    continue;
+                }
+                
+                // Calculate segment stats
+                const chainGap = v3dist(chain[0], chain[chain.length - 1]);
+                let totalLen = 0;
+                let maxSeg = 0;
+                for (let i = 0; i < chain.length - 1; i++) {
+                    const segLen = v3dist(chain[i], chain[i + 1]);
+                    totalLen += segLen;
+                    maxSeg = Math.max(maxSeg, segLen);
+                }
+                const avgSeg = totalLen / (chain.length - 1);
+                
+                // Closed if gap is small relative to average segment
+                const chainClosed = chainGap < avgSeg * 2;
+                
+                // Circle candidate: closed, many points, consistent segments
+                const isCircleCandidate = chainClosed && chain.length > 8 && maxSeg < Math.max(avgSeg * 3, 1.0);
+                
+                console.log(`Raw chain ${rc}: ${chain.length} pts, gap=${chainGap.toFixed(4)}", avgSeg=${avgSeg.toFixed(4)}", closed=${chainClosed}, circleCandidate=${isCircleCandidate}`);
+                
+                if (isCircleCandidate) {
+                    console.log(`  → CIRCLE CANDIDATE, not splitting`);
+                    finalChains.push(chain);
+                    continue;
+                }
+                
+                // Find corner indices (where angle changes sharply)
+                const cornerIndices = findCorners(chain);
+                
+                if (cornerIndices.length === 0) {
+                    finalChains.push(chain);
+                } else {
+                    const splits = splitAtCorners(chain, cornerIndices);
+                    console.log(`  → Split into ${splits.length} chains at corners: [${cornerIndices.join(', ')}]`);
+                    finalChains.push(...splits);
+                }
+            }
+            
+            return finalChains;
+        }
+        
+        // Calculate angle between two vectors (in degrees)
+        function angleBetween(v1, v2) {
+            const len1 = v3len(v1);
+            const len2 = v3len(v2);
+            if (len1 < 1e-10 || len2 < 1e-10) return 0;
+            
+            const dot = v3dot(v1, v2) / (len1 * len2);
+            const clampedDot = Math.max(-1, Math.min(1, dot));
+            return Math.acos(clampedDot) * 180 / Math.PI;
+        }
+        
+        // Find corner indices in a chain
+        // A corner is where:
+        // 1. The direction changes by more than threshold angle, OR
+        // 2. A segment is longer than lengthThreshold (straight lines don't need tessellation), OR
+        // 3. Transition from short to long segment (arc to line boundary)
+        function findCorners(chain, angleThreshold = 15, lengthThreshold = 0.5) {
+            const corners = [];
+            
+            if (chain.length < 3) return corners;
+            
+            // Calculate segment lengths
+            const segLengths = [];
+            for (let i = 0; i < chain.length - 1; i++) {
+                segLengths.push(v3dist(chain[i], chain[i + 1]));
+            }
+            
+            // Find the median segment length to distinguish arc segments from line segments
+            const sortedLengths = [...segLengths].sort((a, b) => a - b);
+            const medianLength = sortedLengths[Math.floor(sortedLengths.length / 2)];
+            
+            // A segment is "long" if it's significantly longer than median (2x) or above absolute threshold
+            function isLongSegment(len) {
+                return len > lengthThreshold || len > medianLength * 2;
+            }
+            
+            for (let i = 1; i < chain.length - 1; i++) {
+                const prevLen = segLengths[i - 1];
+                const nextLen = segLengths[i];
+                
+                const prevIsLong = isLongSegment(prevLen);
+                const nextIsLong = isLongSegment(nextLen);
+                
+                // Rule 1: Transition between short and long segments = corner
+                if (prevIsLong !== nextIsLong) {
+                    console.log(`  Corner at ${i}: segment length transition (${prevLen.toFixed(3)}" -> ${nextLen.toFixed(3)}")`);
+                    corners.push(i);
+                    continue;
+                }
+                
+                // Rule 2: Both segments are long = corner between two lines
+                if (prevIsLong && nextIsLong) {
+                    console.log(`  Corner at ${i}: between two long segments`);
+                    corners.push(i);
+                    continue;
+                }
+                
+                // Rule 3: For short segments, check angle
+                const v1 = v3sub(chain[i], chain[i - 1]);
+                const v2 = v3sub(chain[i + 1], chain[i]);
+                const angle = angleBetween(v1, v2);
+                
+                if (angle > angleThreshold) {
+                    console.log(`  Corner at ${i}: angle ${angle.toFixed(1)}° > ${angleThreshold}°`);
+                    corners.push(i);
+                }
+            }
+            
+            return [...new Set(corners)].sort((a, b) => a - b);
+        }
+        
+        // Split a chain at the given corner indices
+        function splitAtCorners(chain, cornerIndices) {
+            const result = [];
+            
+            // Sort corner indices
+            const sorted = [...cornerIndices].sort((a, b) => a - b);
+            
+            let start = 0;
+            for (const cornerIdx of sorted) {
+                // Include the corner point in both chains
+                if (cornerIdx > start) {
+                    result.push(chain.slice(start, cornerIdx + 1));
+                }
+                start = cornerIdx;
+            }
+            
+            // Add the final segment
+            if (start < chain.length - 1) {
+                result.push(chain.slice(start));
+            }
+            
+            // Filter out single-point chains
+            return result.filter(c => c.length >= 2);
+        }
+
+        // Main detection
+        function detectEdgesPartcraft(geometry) {
+            const rawEdges = getEdgesFromThreeJS(geometry);
+            console.log(`Raw edges from Three.js: ${rawEdges.length}`);
+            
+            const chains = chainEdges(rawEdges);
+            console.log(`Chains after corner splitting: ${chains.length}`);
+            
+            // Log segment length stats
+            let totalSegments = 0;
+            let longSegments = 0;
+            for (const chain of chains) {
+                for (let i = 0; i < chain.length - 1; i++) {
+                    totalSegments++;
+                    if (v3dist(chain[i], chain[i + 1]) > 1.0) longSegments++;
+                }
+            }
+            console.log(`Segment stats: ${longSegments} long (>1") out of ${totalSegments} total`);
+            
+            const classified = [];
+            const counts = { line: 0, arc: 0, circle: 0 };
+            const curveDetails = [];
+            
+            for (let i = 0; i < chains.length; i++) {
+                const result = classifyCurve(chains[i]);
+                counts[result.type]++;
+                
+                // Calculate max segment length for this chain
+                let maxSegLen = 0;
+                for (let j = 0; j < result.points.length - 1; j++) {
+                    maxSegLen = Math.max(maxSegLen, v3dist(result.points[j], result.points[j + 1]));
+                }
+                
+                // Calculate gap (for closed detection)
+                const gap = v3dist(result.points[0], result.points[result.points.length - 1]);
+                
+                // Calculate max angle
+                let maxAngle = 0;
+                for (let j = 1; j < result.points.length - 1; j++) {
+                    const v1 = v3sub(result.points[j], result.points[j - 1]);
+                    const v2 = v3sub(result.points[j + 1], result.points[j]);
+                    maxAngle = Math.max(maxAngle, angleBetween(v1, v2));
+                }
+                
+                let detail = `#${i}: ${result.type.toUpperCase()} (${result.numPoints} pts)`;
+                if (result.type === 'line') {
+                    detail += ` len=${result.length.toFixed(3)}"`;
+                    // Add debug info for potential circles
+                    if (result.numPoints > 10) {
+                        detail += ` [gap=${gap.toFixed(3)}", maxAng=${maxAngle.toFixed(1)}°]`;
+                    }
+                } else if (result.type === 'arc') {
+                    detail += ` R=${result.radius.toFixed(3)}" sweep=${result.sweep.toFixed(1)}°`;
+                } else if (result.type === 'circle') {
+                    detail += ` R=${result.radius.toFixed(3)}"`;
+                }
+                
+                // Add max segment info if it's notable
+                if (maxSegLen > 0.5) detail += ` [maxSeg=${maxSegLen.toFixed(2)}"]`;
+                
+                curveDetails.push({ index: i, type: result.type, detail, ...result });
+                console.log(`Chain ${i}: ${detail}`);
+                
+                for (let j = 0; j < result.points.length - 1; j++) {
+                    classified.push({ start: result.points[j], end: result.points[j + 1], type: result.type, chainIndex: i });
+                }
+            }
+            
+            return { edges: classified, chains: chains.length, counts, curveDetails, totalChains: chains.length };
+        }
+
+        // Get all wireframe edges from geometry
+        function getAllMeshEdges(geometry) {
+            const wireframeGeom = new THREE.WireframeGeometry(geometry);
+            const positions = wireframeGeom.attributes.position.array;
+            const edges = [];
+            for (let i = 0; i < positions.length; i += 6) {
+                edges.push({
+                    start: vec3(positions[i], positions[i+1], positions[i+2]),
+                    end: vec3(positions[i+3], positions[i+4], positions[i+5])
+                });
+            }
+            return edges;
+        }
+        
+        // Check if two edges are the same (with tolerance)
+        function edgesMatch(e1, e2, tolerance = 0.0001) {
+            // Check both directions
+            const match1 = v3dist(e1.start, e2.start) < tolerance && v3dist(e1.end, e2.end) < tolerance;
+            const match2 = v3dist(e1.start, e2.end) < tolerance && v3dist(e1.end, e2.start) < tolerance;
+            return match1 || match2;
+        }
+        
+        // Find mesh edges that are NOT in the classified edges set
+        function getNonClassifiedEdges(allMeshEdges, classifiedEdges) {
+            const nonClassified = [];
+            
+            for (const meshEdge of allMeshEdges) {
+                let isClassified = false;
+                for (const classEdge of classifiedEdges) {
+                    if (edgesMatch(meshEdge, classEdge)) {
+                        isClassified = true;
+                        break;
+                    }
+                }
+                if (!isClassified) {
+                    nonClassified.push(meshEdge);
+                }
+            }
+            
+            return nonClassified;
+        }
+
+        function buildEdgeVisualization(edges, mode, totalChains, geometry, showMeshWires) {
+            const group = new THREE.Group();
+            
+            // If showing mesh wires, add non-classified edges in white
+            if (showMeshWires && geometry) {
+                const allMeshEdges = getAllMeshEdges(geometry);
+                const nonClassifiedEdges = getNonClassifiedEdges(allMeshEdges, edges);
+                
+                console.log(`Mesh wires: ${allMeshEdges.length} total, ${edges.length} classified, ${nonClassifiedEdges.length} non-classified (white)`);
+                
+                if (nonClassifiedEdges.length > 0) {
+                    const positions = [];
+                    for (const edge of nonClassifiedEdges) {
+                        positions.push(edge.start.x, edge.start.y, edge.start.z, edge.end.x, edge.end.y, edge.end.z);
+                    }
+                    const geom = new THREE.BufferGeometry();
+                    geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                    group.add(new THREE.LineSegments(geom, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5 })));
+                }
+            }
+            
+            if (mode === 'classified') {
+                // Color by type
+                const byType = {};
+                for (const edge of edges) {
+                    const type = edge.type || 'unknown';
+                    if (!byType[type]) byType[type] = [];
+                    byType[type].push(edge);
+                }
+                for (const [type, typeEdges] of Object.entries(byType)) {
+                    const positions = [];
+                    for (const edge of typeEdges) {
+                        positions.push(edge.start.x, edge.start.y, edge.start.z, edge.end.x, edge.end.y, edge.end.z);
+                    }
+                    if (positions.length > 0) {
+                        const geom = new THREE.BufferGeometry();
+                        geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                        group.add(new THREE.LineSegments(geom, new THREE.LineBasicMaterial({ color: CURVE_COLORS[type] || 0 })));
+                    }
+                }
+            } else if (mode === 'random') {
+                // Color by chain index
+                const chainColors = generateDistinctColors(totalChains || 50);
+                const byChain = {};
+                for (const edge of edges) {
+                    const idx = edge.chainIndex || 0;
+                    if (!byChain[idx]) byChain[idx] = [];
+                    byChain[idx].push(edge);
+                }
+                for (const [chainIdx, chainEdges] of Object.entries(byChain)) {
+                    const positions = [];
+                    for (const edge of chainEdges) {
+                        positions.push(edge.start.x, edge.start.y, edge.start.z, edge.end.x, edge.end.y, edge.end.z);
+                    }
+                    if (positions.length > 0) {
+                        const geom = new THREE.BufferGeometry();
+                        geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                        const colorData = chainColors[chainIdx % chainColors.length];
+                        const hexColor = hslToHex(colorData.h, colorData.s, colorData.l);
+                        group.add(new THREE.LineSegments(geom, new THREE.LineBasicMaterial({ color: new THREE.Color(hexColor) })));
+                    }
+                }
+            } else {
+                // Black
+                const positions = [];
+                for (const edge of edges) {
+                    positions.push(edge.start.x, edge.start.y, edge.start.z, edge.end.x, edge.end.y, edge.end.z);
+                }
+                const geom = new THREE.BufferGeometry();
+                geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                group.add(new THREE.LineSegments(geom, new THREE.LineBasicMaterial({ color: 0x000000 })));
+            }
+            return group;
+        }
+
+        function updateEdgeDisplay() {
+            if (!currentGroup || !analysisResults) return;
+            if (edgeObjects.current) currentGroup.remove(edgeObjects.current);
+            const partcraft = analysisResults.partcraft;
+            edgeObjects.current = buildEdgeVisualization(partcraft.edges, colorMode, partcraft.totalChains, meshObjects.geometry, wireMode);
+            currentGroup.add(edgeObjects.current);
+            updateStatsDisplay();
+            colorLegend.style.display = colorMode === 'classified' ? 'flex' : 'none';
+        }
+
+        function updateFaceDisplay() {
+            if (!currentGroup || !meshObjects.solid || !meshObjects.random) return;
+            meshObjects.solid.visible = (faceMode === 'solid');
+            meshObjects.random.visible = (faceMode === 'random');
+            updateStatsDisplay();
+        }
+
+        // ============================================
+        // ORDINATE DIMENSIONING SYSTEM
+        // ============================================
+        
+        function getFeaturePoints(level) {
+            // Level 1: Only bounding box corners (overall dimensions)
+            // Level 2: Bounding box + circle/arc centers
+            // Level 3: All features (line endpoints, arc endpoints, circle/arc centers)
+            
+            const features = [];
+            
+            // Get bounding box for levels 1, 2, 3
+            if (currentGroup) {
+                const box = new THREE.Box3().setFromObject(currentGroup);
+                // Add min/max corners as feature points
+                features.push({ x: box.min.x, y: box.min.y, z: box.min.z, type: 'boundary' });
+                features.push({ x: box.max.x, y: box.max.y, z: box.max.z, type: 'boundary' });
+                // Add other corners for complete boundary
+                features.push({ x: box.min.x, y: box.max.y, z: box.min.z, type: 'boundary' });
+                features.push({ x: box.max.x, y: box.min.y, z: box.max.z, type: 'boundary' });
+                features.push({ x: box.min.x, y: box.min.y, z: box.max.z, type: 'boundary' });
+                features.push({ x: box.max.x, y: box.max.y, z: box.min.z, type: 'boundary' });
+                features.push({ x: box.min.x, y: box.max.y, z: box.max.z, type: 'boundary' });
+                features.push({ x: box.max.x, y: box.min.y, z: box.min.z, type: 'boundary' });
+            }
+            
+            if (level === 1) {
+                console.log(`Level 1: ${features.length} boundary points only`);
+                return features;
+            }
+            
+            if (!analysisResults?.partcraft?.curveDetails) return features;
+            
+            for (const curve of analysisResults.partcraft.curveDetails) {
+                if (curve.type === 'circle') {
+                    // Circle: center point (levels 2 and 3)
+                    if (curve.center) {
+                        features.push({ 
+                            x: curve.center.x, 
+                            y: curve.center.y, 
+                            z: curve.center.z,
+                            type: 'circle-center'
+                        });
+                    }
+                } else if (curve.type === 'arc') {
+                    // Arc: center point (levels 2 and 3)
+                    if (curve.center) {
+                        features.push({ 
+                            x: curve.center.x, 
+                            y: curve.center.y, 
+                            z: curve.center.z,
+                            type: 'arc-center'
+                        });
+                    }
+                    // Arc endpoints only at level 3
+                    if (level === 3 && curve.points && curve.points.length >= 2) {
+                        const start = curve.points[0];
+                        const end = curve.points[curve.points.length - 1];
+                        features.push({ x: start.x, y: start.y, z: start.z, type: 'arc-endpoint' });
+                        features.push({ x: end.x, y: end.y, z: end.z, type: 'arc-endpoint' });
+                    }
+                } else if (curve.type === 'line' && level === 3) {
+                    // Line: start and end points only at level 3
+                    if (curve.points && curve.points.length >= 2) {
+                        const start = curve.points[0];
+                        const end = curve.points[curve.points.length - 1];
+                        features.push({ x: start.x, y: start.y, z: start.z, type: 'line-endpoint' });
+                        features.push({ x: end.x, y: end.y, z: end.z, type: 'line-endpoint' });
+                    }
+                }
+            }
+            
+            console.log(`Level ${level}: ${features.length} feature points extracted`);
+            return features;
+        }
+        
+        function getUniqueValues(points, axis, tolerance = 0.01) {
+            const values = points.map(p => ({ val: p[axis], point: p }));
+            values.sort((a, b) => a.val - b.val);
+            
+            const unique = [];
+            for (const v of values) {
+                if (unique.length === 0 || Math.abs(v.val - unique[unique.length - 1].val) > tolerance) {
+                    unique.push({ val: v.val, point: v.point });
+                }
+            }
+            
+            return unique;
+        }
+        
+        function createTextSprite(text, position, rotation = 0, align = 'center') {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Use wider canvas for rotated text to prevent cutoff
+            if (rotation !== 0) {
+                canvas.width = 64;
+                canvas.height = 256;
+            } else {
+                canvas.width = 256;
+                canvas.height = 64;
+            }
+            
+            ctx.fillStyle = '#4488ff';
+            ctx.font = 'bold 36px Arial';
+            ctx.textBaseline = 'middle';
+            
+            if (rotation !== 0) {
+                ctx.translate(32, 128);
+                ctx.rotate(rotation);
+                ctx.textAlign = 'center';
+                ctx.fillText(text, 0, 0);
+            } else {
+                if (align === 'right') {
+                    ctx.textAlign = 'right';
+                    ctx.fillText(text, 240, 32);
+                } else if (align === 'left') {
+                    ctx.textAlign = 'left';
+                    ctx.fillText(text, 16, 32);
+                } else {
+                    ctx.textAlign = 'center';
+                    ctx.fillText(text, 128, 32);
+                }
+            }
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            const material = new THREE.SpriteMaterial({ map: texture });
+            const sprite = new THREE.Sprite(material);
+            sprite.position.copy(position);
+            
+            // Adjust scale based on rotation
+            if (rotation !== 0) {
+                sprite.scale.set(0.75, 3, 1);
+            } else {
+                sprite.scale.set(3, 0.75, 1);
+            }
+            
+            return sprite;
+        }
+        
+        function createAnnotations() {
+            // Clear existing annotations
+            clearAnnotations();
+            
+            if (annotationLevel === 0) return;
+            if (!currentGroup) return;
+            
+            // Only create annotations for orthographic views
+            if (currentView === 'axon') return;
+            
+            const features = getFeaturePoints(annotationLevel);
+            if (features.length === 0) {
+                console.log('No features found for annotation');
+                return;
+            }
+            
+            annotationGroup = new THREE.Group();
+            
+            // Get model bounds
+            const box = new THREE.Box3().setFromObject(currentGroup);
+            
+            console.log(`Creating annotations for ${currentView} view`);
+            console.log(`Model bounds: X[${box.min.x.toFixed(2)}, ${box.max.x.toFixed(2)}], Y[${box.min.y.toFixed(2)}, ${box.max.y.toFixed(2)}], Z[${box.min.z.toFixed(2)}, ${box.max.z.toFixed(2)}]`);
+            
+            // Each view has:
+            // - A "horizontal" axis (left-right in view)
+            // - A "vertical" axis (up-down in view)
+            // - Left annotations show vertical axis values
+            // - Bottom annotations show horizontal axis values
+            
+            // View configurations:
+            // Left view (camera at -X): vertical=Y, horizontal=Z, left=-Z, bottom=-Y
+            // Right view (camera at +X): vertical=Y, horizontal=Z, left=+Z, bottom=-Y  
+            // Front view (camera at +Z): vertical=Y, horizontal=X, left=-X, bottom=-Y
+            // Top view (camera at +Y): vertical=Z, horizontal=X, left=-X, bottom=-Z
+            
+            let leftAxis, bottomAxis;      // Which axis for left/bottom annotations
+            let leftDir, bottomDir;        // Direction to offset (-1 or +1)
+            let annotationPlane;           // Which axis to place annotation plane on
+            let annotationPlanePos;        // Position of annotation plane
+            
+            switch(currentView) {
+                case 'left':
+                    // Camera at -X, looking +X
+                    leftAxis = 'y';      // Left annotations show Y values
+                    bottomAxis = 'z';    // Bottom annotations show Z values
+                    leftDir = -1;        // Annotations go toward -Z
+                    bottomDir = -1;      // Annotations go toward -Y
+                    annotationPlane = 'x';
+                    annotationPlanePos = box.min.x;
+                    break;
+                case 'right':
+                    // Camera at +X, looking -X
+                    leftAxis = 'y';      // Left annotations show Y values
+                    bottomAxis = 'z';    // Bottom annotations show Z values
+                    leftDir = 1;         // Annotations go toward +Z (left side when viewed from +X)
+                    bottomDir = -1;      // Annotations go toward -Y
+                    annotationPlane = 'x';
+                    annotationPlanePos = box.max.x;
+                    break;
+                case 'front':
+                    // Camera at +Z, looking -Z
+                    leftAxis = 'y';      // Left annotations show Y values
+                    bottomAxis = 'x';    // Bottom annotations show X values
+                    leftDir = -1;        // Annotations go toward -X
+                    bottomDir = -1;      // Annotations go toward -Y
+                    annotationPlane = 'z';
+                    annotationPlanePos = box.max.z;
+                    break;
+                case 'top':
+                    // Camera at +Y, looking -Y
+                    leftAxis = 'z';      // Left annotations show Z values
+                    bottomAxis = 'x';    // Bottom annotations show X values
+                    leftDir = -1;        // Annotations go toward -X
+                    bottomDir = 1;       // Annotations go toward +Z (bottom when viewed from +Y)
+                    annotationPlane = 'y';
+                    annotationPlanePos = box.max.y;
+                    break;
+                default:
+                    return;
+            }
+            
+            // Create left annotations (vertical axis)
+            createSideAnnotations('left', leftAxis, bottomAxis, leftDir, box, annotationPlane, annotationPlanePos);
+            
+            // Create bottom annotations (horizontal axis)
+            createSideAnnotations('bottom', bottomAxis, leftAxis, bottomDir, box, annotationPlane, annotationPlanePos);
+            
+            // Create diameter annotations for circles and arcs (levels 2 and 3 only)
+            if (annotationLevel >= 2) {
+                createDiameterAnnotations(leftAxis, bottomAxis, leftDir, box, annotationPlane, annotationPlanePos);
+            }
+            
+            scene.add(annotationGroup);
+            console.log(`Annotations created (Level ${annotationLevel})`);
+        }
+        
+        function getCirclesAndArcs() {
+            // Extract circles and arcs with their centers and radii
+            if (!analysisResults?.partcraft?.curveDetails) return [];
+            
+            const features = [];
+            
+            for (const curve of analysisResults.partcraft.curveDetails) {
+                if (curve.type === 'circle' || curve.type === 'arc') {
+                    if (curve.center && curve.radius) {
+                        features.push({
+                            type: curve.type,
+                            center: curve.center,
+                            radius: curve.radius,
+                            diameter: curve.radius * 2
+                        });
+                    }
+                }
+            }
+            
+            console.log(`Circles/Arcs found: ${features.length}`);
+            return features;
+        }
+        
+        function createDiameterAnnotations(vertAxis, horizAxis, leftDir, box, planeAxis, planePos) {
+            const circlesArcs = getCirclesAndArcs();
+            
+            if (circlesArcs.length === 0) return;
+            
+            // Deduplicate by unique vertical axis values (Y for side views) with 0.001" tolerance
+            const tolerance = 0.001;
+            const uniqueFeatures = [];
+            
+            for (const feature of circlesArcs) {
+                let isDupe = false;
+                for (const existing of uniqueFeatures) {
+                    if (Math.abs(feature.center[vertAxis] - existing.center[vertAxis]) < tolerance) {
+                        isDupe = true;
+                        break;
+                    }
+                }
+                if (!isDupe) {
+                    uniqueFeatures.push(feature);
+                }
+            }
+            
+            console.log(`Creating diameter annotations: ${circlesArcs.length} total, ${uniqueFeatures.length} unique by ${vertAxis.toUpperCase()} position`);
+            
+            // Diameter annotations go on the OPPOSITE side from ordinate annotations
+            const rightDir = -leftDir;
+            
+            const edgePos = rightDir > 0 ? box.max[horizAxis] : box.min[horizAxis];
+            const p2Pos = edgePos + rightDir * 2;  // P2 at edge + 2
+            const p3Pos = p2Pos + rightDir * 2;     // P3 at edge + 4 (text here)
+            
+            console.log(`  Diameter annotations: edge=${edgePos.toFixed(2)}, P2=${p2Pos.toFixed(2)}, P3=${p3Pos.toFixed(2)} (opposite side, dir=${rightDir})`);
+            
+            // Sort by vertical axis position for even spacing
+            uniqueFeatures.sort((a, b) => a.center[vertAxis] - b.center[vertAxis]);
+            
+            // Find min/max for even spacing
+            const minVert = uniqueFeatures[0].center[vertAxis];
+            const maxVert = uniqueFeatures[uniqueFeatures.length - 1].center[vertAxis];
+            
+            // Dashed plus sign parameters
+            const plusSize = 0.3;
+            const dashLength = 0.08;
+            const gapLength = 0.06;
+            
+            for (let i = 0; i < uniqueFeatures.length; i++) {
+                const feature = uniqueFeatures[i];
+                const center = feature.center;
+                const diameter = feature.diameter;
+                
+                // Calculate evenly spaced position for P2/P3
+                let spacedVert;
+                if (uniqueFeatures.length === 1) {
+                    spacedVert = center[vertAxis];
+                } else {
+                    spacedVert = minVert + (i / (uniqueFeatures.length - 1)) * (maxVert - minVert);
+                }
+                
+                // Build the 3 points
+                const p1 = new THREE.Vector3();
+                const p2 = new THREE.Vector3();
+                const p3 = new THREE.Vector3();
+                const labelPosition = new THREE.Vector3();
+                
+                // Set the plane axis position
+                p1[planeAxis] = planePos;
+                p2[planeAxis] = planePos;
+                p3[planeAxis] = planePos;
+                labelPosition[planeAxis] = planePos;
+                
+                // P1: At center
+                p1[vertAxis] = center[vertAxis];
+                p1[horizAxis] = center[horizAxis];
+                
+                // P2: At evenly-spaced vertical, at p2Pos horizontal
+                p2[vertAxis] = spacedVert;
+                p2[horizAxis] = p2Pos;
+                
+                // P3: At evenly-spaced vertical, at p3Pos horizontal
+                p3[vertAxis] = spacedVert;
+                p3[horizAxis] = p3Pos;
+                
+                // Label position (after P3)
+                labelPosition[vertAxis] = spacedVert;
+                labelPosition[horizAxis] = p3Pos + rightDir * 1.5;
+                
+                console.log(`  ${feature.type}: Ø${diameter.toFixed(3)}" center=(${center.x.toFixed(2)},${center.y.toFixed(2)},${center.z.toFixed(2)})`);
+                
+                // Draw leader line from P1 to P2 to P3
+                const leaderGeom = new THREE.BufferGeometry().setFromPoints([p1, p2, p3]);
+                const leader = new THREE.Line(leaderGeom, new THREE.LineBasicMaterial({ color: 0x4488ff }));
+                annotationGroup.add(leader);
+                
+                // Dashed plus sign at center
+                // Horizontal dashes
+                for (let d = -plusSize; d < plusSize; d += dashLength + gapLength) {
+                    const dashStart = p1.clone();
+                    const dashEnd = p1.clone();
+                    dashStart[horizAxis] = center[horizAxis] + d;
+                    dashEnd[horizAxis] = center[horizAxis] + Math.min(d + dashLength, plusSize);
+                    if (dashEnd[horizAxis] > dashStart[horizAxis]) {
+                        const dashGeom = new THREE.BufferGeometry().setFromPoints([dashStart, dashEnd]);
+                        const dash = new THREE.Line(dashGeom, new THREE.LineBasicMaterial({ color: 0x4488ff }));
+                        annotationGroup.add(dash);
+                    }
+                }
+                
+                // Vertical dashes
+                for (let d = -plusSize; d < plusSize; d += dashLength + gapLength) {
+                    const dashStart = p1.clone();
+                    const dashEnd = p1.clone();
+                    dashStart[vertAxis] = center[vertAxis] + d;
+                    dashEnd[vertAxis] = center[vertAxis] + Math.min(d + dashLength, plusSize);
+                    if (dashEnd[vertAxis] > dashStart[vertAxis]) {
+                        const dashGeom = new THREE.BufferGeometry().setFromPoints([dashStart, dashEnd]);
+                        const dash = new THREE.Line(dashGeom, new THREE.LineBasicMaterial({ color: 0x4488ff }));
+                        annotationGroup.add(dash);
+                    }
+                }
+                
+                // Small filled arrow at P1 (pointing to center)
+                const arrowDir = new THREE.Vector3().subVectors(p1, p2).normalize();
+                const arrowLength = 0.25;
+                const arrowWidth = 0.1;
+                
+                // Perpendicular vector for arrow wings
+                const perpVec = new THREE.Vector3();
+                perpVec[vertAxis] = arrowWidth;
+                
+                const arrowBase = p1.clone().sub(arrowDir.clone().multiplyScalar(arrowLength));
+                const arrowLeft = arrowBase.clone().add(perpVec);
+                const arrowRight = arrowBase.clone().sub(perpVec);
+                
+                // Create filled triangle for arrow
+                const arrowShape = new THREE.BufferGeometry();
+                const vertices = new Float32Array([
+                    p1.x, p1.y, p1.z,
+                    arrowLeft.x, arrowLeft.y, arrowLeft.z,
+                    arrowRight.x, arrowRight.y, arrowRight.z
+                ]);
+                arrowShape.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+                const arrowMesh = new THREE.Mesh(arrowShape, new THREE.MeshBasicMaterial({ color: 0x4488ff, side: THREE.DoubleSide }));
+                annotationGroup.add(arrowMesh);
+                
+                // Text label with diameter symbol
+                const dimText = `Ø ${diameter.toFixed(3)}"`;
+                const label = createTextSprite(dimText, labelPosition, 0, 'left');
+                annotationGroup.add(label);
+            }
+        }
+        
+        function createSideAnnotations(side, valueAxis, perpAxis, direction, box, planeAxis, planePos) {
+            const features = getFeaturePoints(annotationLevel);
+            const uniqueVals = getUniqueValues(features, valueAxis);
+            
+            if (uniqueVals.length === 0) return;
+            
+            console.log(`${side} annotations: ${uniqueVals.length} unique ${valueAxis.toUpperCase()} values`);
+            
+            // Sort by value
+            uniqueVals.sort((a, b) => a.val - b.val);
+            
+            // Get bounds for this axis
+            const minVal = uniqueVals[0].val;
+            const maxVal = uniqueVals[uniqueVals.length - 1].val;
+            
+            // Origin for dimensions
+            const origin = box.min[valueAxis];
+            
+            // Calculate annotation positions based on direction
+            // P1 is 2" away from model edge in the perpAxis direction
+            const edgePos = direction > 0 ? box.max[perpAxis] : box.min[perpAxis];
+            const p1Pos = edgePos + direction * 2;
+            const p2Pos = p1Pos + direction * 2;
+            const p3Pos = p2Pos + direction * 2;
+            const p4Pos = p3Pos + direction * 2;
+            const textPos = p4Pos + direction * 2;
+            
+            console.log(`  ${perpAxis} positions: edge=${edgePos.toFixed(2)}, P1=${p1Pos.toFixed(2)}, P2=${p2Pos.toFixed(2)}, P3=${p3Pos.toFixed(2)}, P4=${p4Pos.toFixed(2)}, text=${textPos.toFixed(2)}`);
+            
+            // Third axis position (the annotation plane)
+            const thirdAxis = planeAxis;
+            const thirdPos = planePos;
+            
+            for (let i = 0; i < uniqueVals.length; i++) {
+                const featureVal = uniqueVals[i].val;
+                const dimText = (featureVal - origin).toFixed(3);
+                
+                // Calculate evenly spaced position for P3/P4
+                let spacedVal;
+                if (uniqueVals.length === 1) {
+                    spacedVal = featureVal;
+                } else {
+                    spacedVal = minVal + (i / (uniqueVals.length - 1)) * (maxVal - minVal);
+                }
+                
+                // Build the 4 points based on which axes we're using
+                const p1 = new THREE.Vector3();
+                const p2 = new THREE.Vector3();
+                const p3 = new THREE.Vector3();
+                const p4 = new THREE.Vector3();
+                const labelPosition = new THREE.Vector3();
+                
+                // Set the plane axis position (same for all points)
+                p1[thirdAxis] = thirdPos;
+                p2[thirdAxis] = thirdPos;
+                p3[thirdAxis] = thirdPos;
+                p4[thirdAxis] = thirdPos;
+                labelPosition[thirdAxis] = thirdPos;
+                
+                // Set positions based on the value axis and perpendicular axis
+                // P1: At feature value, at p1Pos on perpAxis
+                p1[valueAxis] = featureVal;
+                p1[perpAxis] = p1Pos;
+                
+                // P2: At feature value, at p2Pos on perpAxis
+                p2[valueAxis] = featureVal;
+                p2[perpAxis] = p2Pos;
+                
+                // P3: At spaced value, at p3Pos on perpAxis
+                p3[valueAxis] = spacedVal;
+                p3[perpAxis] = p3Pos;
+                
+                // P4: At spaced value, at p4Pos on perpAxis
+                p4[valueAxis] = spacedVal;
+                p4[perpAxis] = p4Pos;
+                
+                // Label: At spaced value, at textPos on perpAxis
+                labelPosition[valueAxis] = spacedVal;
+                labelPosition[perpAxis] = textPos;
+                
+                // Draw the 4-point elbow line
+                const leaderGeom = new THREE.BufferGeometry().setFromPoints([p1, p2, p3, p4]);
+                const leader = new THREE.Line(leaderGeom, new THREE.LineBasicMaterial({ color: 0x4488ff }));
+                annotationGroup.add(leader);
+                
+                // Text label
+                const isBottomAnnotation = (side === 'bottom');
+                const rotation = isBottomAnnotation ? -Math.PI/2 : 0;
+                const align = isBottomAnnotation ? 'center' : 'right';
+                const label = createTextSprite(dimText + '"', labelPosition, rotation, align);
+                annotationGroup.add(label);
+            }
+        }
+        
+        function clearAnnotations() {
+            if (annotationGroup) {
+                scene.remove(annotationGroup);
+                annotationGroup = null;
+            }
+        }
+
+        function updateStatsDisplay() {
+            const partcraft = analysisResults.partcraft;
+            const counts = partcraft.counts;
+            
+            // Generate chain colors for random mode
+            const chainColors = generateDistinctColors(partcraft.totalChains || 50);
+            
+            let curveDetailsHtml = '';
+            if (partcraft.curveDetails?.length) {
+                curveDetailsHtml = '<div class="curve-details">';
+                for (const curve of partcraft.curveDetails) {
+                    let badgeStyle = '';
+                    if (colorMode === 'random') {
+                        const colorData = chainColors[curve.index % chainColors.length];
+                        const hexColor = hslToHex(colorData.h, colorData.s, colorData.l);
+                        badgeStyle = `style="background: ${hexColor}; color: #000;"`;
+                    }
+                    curveDetailsHtml += `<div class="curve-detail-item"><span class="curve-type-badge ${colorMode !== 'random' ? curve.type : ''}" ${badgeStyle}>${curve.type}</span>${curve.detail}</div>`;
+                }
+                curveDetailsHtml += '</div>';
+            }
+            
+            let facesHtml = faceMode === 'random' && faceColors.length ? '<div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #3a3a5a;"><h4 style="color: #6c63ff; margin-bottom: 10px;">B-Rep Faces</h4>' +
+                faceColors.map((fc, i) => `<div class="edge-stat"><span><span class="face-color-box" style="background: ${hslToHex(fc.h, fc.s, fc.l)};"></span>Face ${i}</span><span>${fc.triangles} tris</span></div>`).join('') + '</div>' : '';
+            
+            edgeStatsEl.innerHTML = `
+                <div style="margin-bottom: 15px;">
+                    <h4 style="color: #6c63ff; margin-bottom: 10px;">Edge Classification</h4>
+                    <div class="edge-stat"><span>Edge Chains:</span><span>${partcraft.chains}</span></div>
+                    <div class="edge-stat"><span style="color: #00ffff;">Lines:</span><span>${counts.line || 0}</span></div>
+                    <div class="edge-stat"><span style="color: #ff00ff;">Arcs:</span><span>${counts.arc || 0}</span></div>
+                    <div class="edge-stat"><span style="color: #ffff00;">Circles:</span><span>${counts.circle || 0}</span></div>
+                    ${curveDetailsHtml}
+                </div>
+                <div style="border-top: 1px solid #3a3a5a; padding-top: 15px;">
+                    <h4 style="color: #6c63ff; margin-bottom: 10px;">Geometry</h4>
+                    <div class="edge-stat"><span>Vertices:</span><span>${analysisResults.vertices}</span></div>
+                    <div class="edge-stat"><span>Triangles:</span><span>${analysisResults.triangles}</span></div>
+                    <div class="edge-stat"><span>B-Rep Faces:</span><span>${analysisResults.brepFaces}</span></div>
+                </div>
+                ${facesHtml}
+            `;
+        }
+
+        // Initialize
+        try {
+            log('Loading STEP parser...');
+            occt = await occtimportjs({ locateFile: name => 'https://cdn.jsdelivr.net/npm/occt-import-js@0.0.23/dist/' + name });
+            log('Ready! Upload a STEP file to analyze.');
+            uploadArea.classList.remove('disabled');
+        } catch (err) { log('Failed: ' + err.message); }
+
+        // Events
+        uploadArea.addEventListener('click', () => { if (!uploadArea.classList.contains('disabled')) fileInput.click(); });
+        uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+        uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+        uploadArea.addEventListener('drop', e => { e.preventDefault(); uploadArea.classList.remove('dragover'); if (e.dataTransfer.files.length) processFile(e.dataTransfer.files[0]); });
+        fileInput.addEventListener('change', e => { if (e.target.files.length) processFile(e.target.files[0]); });
+        
+        newFileBtn.addEventListener('click', () => {
+            resultsEl.classList.remove('show'); uploadArea.classList.remove('hidden');
+            if (currentGroup) { scene.remove(currentGroup); currentGroup = null; }
+            if (axesHelper) { scene.remove(axesHelper); axesHelper = null; }
+            clearAnnotations();
+            annotationLevel = 0;
+            axesOn = true;
+            document.querySelectorAll('#btn-annotations-off, #btn-annotations-1, #btn-annotations-2, #btn-annotations-3').forEach(b => b.classList.remove('active'));
+            document.getElementById('btn-annotations-off').classList.add('active');
+            document.getElementById('btn-axes-off').classList.remove('active');
+            document.getElementById('btn-axes-on').classList.add('active');
+            fileInput.value = ''; faceColors = [];
+            meshObjects = { solid: null, random: null, geometry: null };
+            currentView = 'axon';
+            updateViewButtons('axon');
+        });
+        
+        document.getElementById('btn-black').addEventListener('click', function() { 
+            colorMode = 'black'; 
+            this.classList.add('active'); 
+            document.getElementById('btn-classified').classList.remove('active'); 
+            document.getElementById('btn-random-edges').classList.remove('active'); 
+            updateEdgeDisplay(); 
+        });
+        document.getElementById('btn-classified').addEventListener('click', function() { 
+            colorMode = 'classified'; 
+            this.classList.add('active'); 
+            document.getElementById('btn-black').classList.remove('active'); 
+            document.getElementById('btn-random-edges').classList.remove('active'); 
+            updateEdgeDisplay(); 
+        });
+        document.getElementById('btn-random-edges').addEventListener('click', function() { 
+            colorMode = 'random'; 
+            this.classList.add('active'); 
+            document.getElementById('btn-black').classList.remove('active'); 
+            document.getElementById('btn-classified').classList.remove('active'); 
+            updateEdgeDisplay(); 
+        });
+        document.getElementById('btn-solid').addEventListener('click', function() { faceMode = 'solid'; this.classList.add('active'); document.getElementById('btn-random').classList.remove('active'); updateFaceDisplay(); });
+        document.getElementById('btn-random').addEventListener('click', function() { faceMode = 'random'; this.classList.add('active'); document.getElementById('btn-solid').classList.remove('active'); updateFaceDisplay(); });
+        
+        document.getElementById('btn-top').addEventListener('click', function() { setView('top'); updateViewButtons('top'); createAnnotations(); });
+        document.getElementById('btn-front').addEventListener('click', function() { setView('front'); updateViewButtons('front'); createAnnotations(); });
+        document.getElementById('btn-left').addEventListener('click', function() { setView('left'); updateViewButtons('left'); createAnnotations(); });
+        document.getElementById('btn-right').addEventListener('click', function() { 
+            setView('right'); 
+            updateViewButtons('right'); 
+            createAnnotations();
+        });
+        
+        document.getElementById('btn-axon').addEventListener('click', function() { setView('axon'); updateViewButtons('axon'); clearAnnotations(); });
+        document.getElementById('btn-wires-off').addEventListener('click', function() { wireMode = false; this.classList.add('active'); document.getElementById('btn-wires-on').classList.remove('active'); updateEdgeDisplay(); });
+        document.getElementById('btn-wires-on').addEventListener('click', function() { wireMode = true; this.classList.add('active'); document.getElementById('btn-wires-off').classList.remove('active'); updateEdgeDisplay(); });
+        
+        document.getElementById('btn-annotations-off').addEventListener('click', function() { 
+            annotationLevel = 0; 
+            document.querySelectorAll('#btn-annotations-off, #btn-annotations-1, #btn-annotations-2, #btn-annotations-3').forEach(b => b.classList.remove('active'));
+            this.classList.add('active'); 
+            clearAnnotations(); 
+        });
+        document.getElementById('btn-annotations-1').addEventListener('click', function() { 
+            annotationLevel = 1; 
+            document.querySelectorAll('#btn-annotations-off, #btn-annotations-1, #btn-annotations-2, #btn-annotations-3').forEach(b => b.classList.remove('active'));
+            this.classList.add('active'); 
+            createAnnotations(); 
+        });
+        document.getElementById('btn-annotations-2').addEventListener('click', function() { 
+            annotationLevel = 2; 
+            document.querySelectorAll('#btn-annotations-off, #btn-annotations-1, #btn-annotations-2, #btn-annotations-3').forEach(b => b.classList.remove('active'));
+            this.classList.add('active'); 
+            createAnnotations(); 
+        });
+        document.getElementById('btn-annotations-3').addEventListener('click', function() { 
+            annotationLevel = 3; 
+            document.querySelectorAll('#btn-annotations-off, #btn-annotations-1, #btn-annotations-2, #btn-annotations-3').forEach(b => b.classList.remove('active'));
+            this.classList.add('active'); 
+            createAnnotations(); 
+        });
+        
+        document.getElementById('btn-axes-off').addEventListener('click', function() { 
+            axesOn = false; 
+            this.classList.add('active'); 
+            document.getElementById('btn-axes-on').classList.remove('active'); 
+            if (axesHelper) { scene.remove(axesHelper); axesHelper = null; }
+        });
+        document.getElementById('btn-axes-on').addEventListener('click', function() { 
+            axesOn = true; 
+            this.classList.add('active'); 
+            document.getElementById('btn-axes-off').classList.remove('active'); 
+            createAxesHelper(); 
+        });
+
+        async function processFile(file) {
+            log('Reading: ' + file.name);
+            uploadArea.classList.add('hidden');
+            try {
+                const buffer = await file.arrayBuffer();
+                log('Parsing STEP...');
+                const result = occt.ReadStepFile(new Uint8Array(buffer), { linearUnit: 'inch' });
+                if (!result.success) throw new Error('Parse failed');
+                
+                let partName = file.name.replace(/\.(stp|step)$/i, '');
+                if (result.meshes[0]?.name) partName = result.meshes[0].name;
+                
+                log('Building geometry...');
+                if (!scene) initThreeJS();
+                if (currentGroup) scene.remove(currentGroup);
+                
+                currentGroup = new THREE.Group();
+                let totalVertices = 0, totalTriangles = 0, brepFaces = 0;
+                faceColors = [];
+                let minX = Infinity, minY = Infinity, minZ = Infinity;
+                let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+                
+                for (const meshData of result.meshes) {
+                    const geometry = new THREE.BufferGeometry();
+                    const positions = toFloat32Array(meshData.attributes.position.array);
+                    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                    
+                    for (let i = 0; i < positions.length; i += 3) {
+                        minX = Math.min(minX, positions[i]); maxX = Math.max(maxX, positions[i]);
+                        minY = Math.min(minY, positions[i+1]); maxY = Math.max(maxY, positions[i+1]);
+                        minZ = Math.min(minZ, positions[i+2]); maxZ = Math.max(maxZ, positions[i+2]);
+                    }
+                    
+                    if (meshData.attributes.normal?.array) geometry.setAttribute('normal', new THREE.Float32BufferAttribute(toFloat32Array(meshData.attributes.normal.array), 3));
+                    else geometry.computeVertexNormals();
+                    
+                    if (meshData.index?.array) {
+                        const indices = toUint32Array(meshData.index.array);
+                        geometry.setIndex(new THREE.Uint32BufferAttribute(indices, 1));
+                        totalTriangles += indices.length / 3;
+                    } else totalTriangles += positions.length / 9;
+                    
+                    totalVertices += positions.length / 3;
+                    brepFaces += meshData.brep_faces?.length || 0;
+                    
+                    meshObjects.solid = new THREE.Mesh(geometry, new THREE.MeshPhongMaterial({ 
+                        color: meshData.color ? new THREE.Color(...meshData.color) : 0x6c63ff, 
+                        side: THREE.DoubleSide,
+                        polygonOffset: true,
+                        polygonOffsetFactor: 1,
+                        polygonOffsetUnits: 1
+                    }));
+                    currentGroup.add(meshObjects.solid);
+                    
+                    // Store geometry for wireframe edge extraction
+                    meshObjects.geometry = geometry;
+                    
+                    if (meshData.brep_faces?.length > 0) {
+                        const randomGeometry = geometry.clone();
+                        const colors = generateDistinctColors(meshData.brep_faces.length);
+                        const materials = [];
+                        randomGeometry.clearGroups();
+                        for (let i = 0; i < meshData.brep_faces.length; i++) {
+                            const face = meshData.brep_faces[i];
+                            materials.push(new THREE.MeshPhongMaterial({ 
+                                color: new THREE.Color(hslToHex(colors[i].h, colors[i].s, colors[i].l)), 
+                                side: THREE.DoubleSide,
+                                polygonOffset: true,
+                                polygonOffsetFactor: 1,
+                                polygonOffsetUnits: 1
+                            }));
+                            randomGeometry.addGroup(face.first * 3, (face.last - face.first + 1) * 3, i);
+                            faceColors.push({ ...colors[i], triangles: face.last - face.first + 1 });
+                        }
+                        meshObjects.random = new THREE.Mesh(randomGeometry, materials);
+                        meshObjects.random.visible = false;
+                        currentGroup.add(meshObjects.random);
+                    }
+                    
+                    log('Classifying curves...');
+                    analysisResults = { partcraft: detectEdgesPartcraft(geometry), vertices: totalVertices, triangles: totalTriangles, brepFaces };
+                }
+                
+                scene.add(currentGroup);
+                updateEdgeDisplay();
+                updateFaceDisplay();
+                fitCameraToObject(currentGroup);
+                
+                document.getElementById('part-name').textContent = partName;
+                document.getElementById('dim-x').textContent = (maxX - minX).toFixed(3);
+                document.getElementById('dim-y').textContent = (maxY - minY).toFixed(3);
+                document.getElementById('dim-z').textContent = (maxZ - minZ).toFixed(3);
+                
+                resultsEl.classList.add('show');
+                log('✓ Complete!');
+            } catch (err) { log('Error: ' + err.message); uploadArea.classList.remove('hidden'); }
+        }
+        
+        window.addEventListener('resize', () => {
+            if (renderer && orthoCamera) {
+                const width = viewerEl.clientWidth;
+                const height = viewerEl.clientHeight;
+                const aspect = width / height;
+                
+                const frustumSize = modelSize * 0.65;
+                orthoCamera.left = -frustumSize * aspect;
+                orthoCamera.right = frustumSize * aspect;
+                orthoCamera.top = frustumSize;
+                orthoCamera.bottom = -frustumSize;
+                orthoCamera.updateProjectionMatrix();
+                
+                renderer.setSize(width, height);
+            }
+        });
+    })();
+    </script>
+</body>
+</html>
